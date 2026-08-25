@@ -49,6 +49,10 @@ if (existsSync(path.join(root, "examples"))) {
   cpSync(path.join(root, "examples"), path.join(standaloneDest, "examples"), { recursive: true });
 }
 
+for (const junk of ["data", "src", "desktop", "installer", "AGENTS.md", "CLAUDE.md"]) {
+  rmSync(path.join(standaloneDest, junk), { recursive: true, force: true });
+}
+
 const electronVersion = require("electron/package.json").version;
 mkdirSync(releaseDir, { recursive: true });
 
