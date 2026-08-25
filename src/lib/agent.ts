@@ -436,9 +436,17 @@ async function upsertPlugin(store: Store, pluginPath?: string): Promise<PluginRe
 
 function extractSlots(text: string, ask?: PendingAsk) {
   const url = extractUrl(text);
-  const path = extractPath(text, url);
   let username = extractUsername(text);
   let password = extractPassword(text);
+
+  if (ask === "path") {
+    const raw = text.trim().replace(/^['"]|['"]$/g, "");
+    if (raw && !/^https?:\/\//i.test(raw) && !/\bdo\s+update\b/i.test(raw)) {
+      return { url, path: raw, username, password };
+    }
+  }
+
+  const path = extractPath(text, url);
 
   if (ask === "password" && !password && !url && !path && !extractUsername(text)) {
     password = text.trim();
@@ -446,8 +454,6 @@ function extractSlots(text: string, ask?: PendingAsk) {
     username = text.trim().split(/\s+/)[0];
   } else if (ask === "url" && !url && looksLikeHost(text.trim())) {
     return { url: text.trim(), path, username, password };
-  } else if (ask === "path" && !path && text.trim() && !url) {
-    return { url, path: text.trim().replace(/^['"]|['"]$/g, ""), username, password };
   }
 
   return { url, path, username, password };
@@ -475,8 +481,8 @@ function extractPath(text: string, url?: string): string | undefined {
     return onTo[1].trim().replace(/^['"]|['"]$/g, "");
   }
 
-  const win = text.match(/(?:^|[\s"'])([a-zA-Z]:[\\/][^\s"']+)/);
-  if (win?.[1] && win[1] !== url) return win[1];
+  const win = text.match(/(?:^|[\s"'])([a-zA-Z]:[\\/][^\n"']+)/);
+  if (win?.[1] && win[1] !== url) return win[1].trim().replace(/[.,;]+$/, "");
 
   const unix = text.match(/(?:^|\s)((?:~|\/|\.\/|\.\.\/)[^\s"']+)/);
   if (unix?.[1]) return unix[1];

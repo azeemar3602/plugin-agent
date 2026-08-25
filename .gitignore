@@ -40,6 +40,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# local PressPush data (contains WordPress application passwords)
+# local agent data (contains WordPress application passwords)
 /data/store.json
 /data/store.json.tmp
+/data/uploads/

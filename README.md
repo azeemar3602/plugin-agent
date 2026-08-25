@@ -33,5 +33,6 @@ Application passwords only work with the REST API, and WordPress core cannot ins
 ## Notes
 
 - Run this on a machine that can read the plugin folder and reach the WordPress site.
+- If the agent is not on that PC, zip the plugin folder and upload it with the paperclip.
 - Credentials stay in `data/store.json` (gitignored).
 - The WordPress user must be an Administrator.

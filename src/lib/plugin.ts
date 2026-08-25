@@ -1,8 +1,12 @@
-import { readdir, readFile, stat } from "node:fs/promises";
+import { execFile as execFileCb } from "node:child_process";
+import { mkdir, readdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { PassThrough } from "node:stream";
+import { promisify } from "node:util";
 import { ZipArchive, type EntryData } from "archiver";
+
+const execFile = promisify(execFileCb);
 
 export type PluginHeader = {
   name: string;
@@ -28,8 +32,17 @@ const SKIP_DIR_NAMES = new Set([
   ".svn",
 ]);
 
+export function isWindowsAbsPath(value: string): boolean {
+  return /^[a-zA-Z]:[\\/]/.test(value);
+}
+
 export function resolvePluginPath(input: string): string {
   let value = input.trim().replace(/^['"]|['"]$/g, "");
+  if (isWindowsAbsPath(value) && process.platform !== "win32") {
+    throw new Error(
+      `That folder is on your Windows PC (${value}). This agent is running on Linux, so it cannot open it. Zip the plugin folder (the one with the main .php file) and upload it with the paperclip next to Send, or run npm run dev on that PC.`,
+    );
+  }
   if (value.startsWith("~")) {
     value = path.join(os.homedir(), value.slice(1));
   }
@@ -166,6 +179,57 @@ export async function zipPlugin(absDir: string, slug: string): Promise<Buffer> {
 
     archive.finalize();
   });
+}
+
+const UNZIP_PY = `
+import zipfile, sys, os
+src, dest = sys.argv[1], sys.argv[2]
+dest = os.path.abspath(dest)
+os.makedirs(dest, exist_ok=True)
+with zipfile.ZipFile(src) as z:
+    for info in z.infolist():
+        name = info.filename.replace("\\\\", "/")
+        if not name or name.endswith("/"):
+            continue
+        parts = [p for p in name.split("/") if p and p != "."]
+        if any(p == ".." for p in parts):
+            continue
+        target = os.path.abspath(os.path.join(dest, *parts))
+        if not target.startswith(dest + os.sep):
+            continue
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        with z.open(info) as srcf, open(target, "wb") as out:
+            out.write(srcf.read())
+`;
+
+export async function extractUploadedZip(buffer: Buffer): Promise<string> {
+  const root = path.join(process.cwd(), "data", "uploads");
+  await mkdir(root, { recursive: true });
+  const stamp = Date.now().toString();
+  const zipPath = path.join(root, `${stamp}.zip`);
+  const dest = path.join(root, stamp);
+  await writeFile(zipPath, buffer);
+  try {
+    await execFile("python3", ["-c", UNZIP_PY, zipPath, dest]);
+  } finally {
+    await unlink(zipPath).catch(() => undefined);
+  }
+
+  const entries = await readdir(dest, { withFileTypes: true });
+  const phpAtRoot = entries.some((entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".php"));
+  const dirs = entries.filter((entry) => entry.isDirectory() && !entry.name.startsWith("__"));
+  if (!phpAtRoot && dirs.length === 1) {
+    return path.join(dest, dirs[0].name);
+  }
+  return dest;
+}
+
+export async function saveUploadedPhp(buffer: Buffer, filename: string): Promise<string> {
+  const slug = path.basename(filename, ".php").replace(/[^\w-]+/g, "-") || "uploaded-plugin";
+  const dest = path.join(process.cwd(), "data", "uploads", `${Date.now()}-${slug}`);
+  await mkdir(dest, { recursive: true });
+  await writeFile(path.join(dest, `${slug}.php`), buffer);
+  return dest;
 }
 
 export function toPluginRecord(

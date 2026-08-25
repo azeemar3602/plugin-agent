@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { LoaderCircle, RefreshCw, SendHorizontal } from "lucide-react";
+import { LoaderCircle, Paperclip, RefreshCw, SendHorizontal } from "lucide-react";
 
 import { AgentText, MessageCard, PressMark, ToolSteps } from "@/components/message-cards";
 import { buttonVariants } from "@/components/ui/button";
@@ -79,6 +79,24 @@ export function AgentApp() {
       setStore(data.store);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Send failed.");
+    } finally {
+      setSending(false);
+      inputRef.current?.focus();
+    }
+  }
+
+  async function uploadPlugin(file: File) {
+    setSending(true);
+    setError(null);
+    try {
+      const body = new FormData();
+      body.set("file", file);
+      const response = await fetch("/api/upload", { method: "POST", body });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Upload failed.");
+      setStore(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed.");
     } finally {
       setSending(false);
       inputRef.current?.focus();
@@ -171,9 +189,28 @@ export function AgentApp() {
             autoComplete="off"
             autoFocus
             disabled={sending}
-            placeholder="Type here, then press Enter or Send"
+            placeholder="Type here, or upload the plugin zip"
             className="h-11 min-w-0 flex-1 rounded-xl border border-input bg-input/30 px-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
           />
+          <label
+            className={cn(
+              buttonVariants({ size: "icon-lg", variant: "outline" }),
+              "h-11 w-11 cursor-pointer",
+            )}
+          >
+            <Paperclip />
+            <input
+              type="file"
+              accept=".zip,.php,application/zip"
+              className="sr-only"
+              disabled={sending}
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (file) void uploadPlugin(file);
+              }}
+            />
+          </label>
           <button
             type="submit"
             disabled={sending}
