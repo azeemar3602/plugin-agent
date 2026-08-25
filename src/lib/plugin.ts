@@ -40,7 +40,7 @@ export function resolvePluginPath(input: string): string {
   let value = input.trim().replace(/^['"]|['"]$/g, "");
   if (isWindowsAbsPath(value) && process.platform !== "win32") {
     throw new Error(
-      `That folder is on your Windows PC (${value}). This agent is running on Linux, so it cannot open it. Zip the plugin folder (the one with the main .php file) and upload it with the paperclip next to Send, or run npm run dev on that PC.`,
+      `That folder is on your Windows PC (${value}). This agent cannot open C:\\ paths. Use **Select plugin folder on this PC** (or Zip) so the files are uploaded here, then I will push them to WordPress.`,
     );
   }
   if (value.startsWith("~")) {
@@ -231,6 +231,8 @@ export async function saveUploadedPhp(buffer: Buffer, filename: string): Promise
   await writeFile(path.join(dest, `${slug}.php`), buffer);
   return dest;
 }
+
+export { saveUploadedTree } from "./upload-tree";
 
 export function toPluginRecord(
   inspected: InspectedPlugin,

@@ -13,9 +13,11 @@ export const WELCOME_TEXT = `I'm your WordPress plugin agent. I'll ask for:
 1. Site URL
 2. WordPress username
 3. Application password (Users → Profile → Application Passwords)
-4. Local plugin folder
+4. Your plugin folder — use **Select plugin folder on this PC** (a typed C:\\ path will not work from this server)
 
-I remember those. After Cursor or Claude saves the plugin, say **do update** and I zip the folder and push it to the site.`;
+Plugin Agent Helper is only the installer. Your real plugin is not on WordPress until those files are uploaded here and pushed.
+
+After that, say **do update** whenever the plugin files change.`;
 
 const WELCOME: Store = {
   version: STORE_VERSION,
@@ -77,8 +79,16 @@ export async function readStore(): Promise<Store> {
       jobs: parsed.jobs ?? [],
       messages: staleWelcome || !parsed.messages?.length ? WELCOME.messages : parsed.messages,
       lastSiteId: parsed.lastSiteId,
-      lastPluginId: parsed.lastPluginId,
-      pending: parsed.pending,
+      lastPluginId: parsed.lastPluginId || undefined,
+      pending: parsed.pending
+        ? {
+            ...parsed.pending,
+            url: parsed.pending.url || undefined,
+            path: parsed.pending.path || undefined,
+            username: parsed.pending.username || undefined,
+            password: parsed.pending.password || undefined,
+          }
+        : undefined,
     };
   } catch {
     return structuredClone(WELCOME);

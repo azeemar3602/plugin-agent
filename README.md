@@ -1,6 +1,6 @@
 # Plugin Agent
 
-A chat agent you run locally. It asks for WordPress credentials, then a plugin folder. After that, you say **do update** whenever Cursor or Claude saves the plugin.
+A chat agent that asks for WordPress credentials, then uploads a plugin folder from your PC and installs or updates it on the site.
 
 ## Run
 
@@ -16,23 +16,26 @@ Open [http://127.0.0.1:43177](http://127.0.0.1:43177).
 1. Site URL (`https://yoursite.com`)
 2. WordPress username
 3. Application password — Users → Profile → Application Passwords (not the login password)
-4. Local plugin folder path
+4. Your plugin folder — click **Select plugin folder on this PC** (or **Zip** that folder)
 
-It remembers that. Later:
+A typed `C:\...` path will not work if the agent is not running on that Windows PC. The files have to be uploaded here first.
+
+It remembers the site. Later:
 
 ```
 do update
 ```
 
-It re-reads the folder, zips it, and overwrites the plugin on the site.
+That re-reads the last uploaded folder, zips it, and overwrites the plugin on WordPress.
 
 ## One-time on WordPress
 
-Application passwords only work with the REST API, and WordPress core cannot install a custom zip that way. The first time, the agent gives you `plugin-agent-bridge.zip`. Upload it once under **Plugins → Add New → Upload Plugin** and activate it. After that, the agent is just chat.
+Application passwords only work with the REST API, and WordPress core cannot install a custom zip that way. The first time, the agent gives you `plugin-agent-bridge.zip` (**Plugin Agent Helper**). Upload it once under **Plugins → Add New → Upload Plugin** and activate it.
+
+The helper is only the installer. Your real plugin appears under **Plugins** after you select its folder in this app and the agent reports a successful install.
 
 ## Notes
 
-- Run this on a machine that can read the plugin folder and reach the WordPress site.
-- If the agent is not on that PC, zip the plugin folder and upload it with the paperclip.
-- Credentials stay in `data/store.json` (gitignored).
 - The WordPress user must be an Administrator.
+- Credentials stay in `data/store.json` (gitignored).
+- If folder pick is unavailable, zip the plugin folder (the directory with the main `.php` file) and use **Zip**.

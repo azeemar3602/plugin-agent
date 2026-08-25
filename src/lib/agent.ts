@@ -1,4 +1,4 @@
-import { inspectPlugin, toPluginRecord, zipPlugin } from "./plugin";
+import { inspectPlugin, isWindowsAbsPath, toPluginRecord, zipPlugin } from "./plugin";
 import { nid, nowIso } from "./ids";
 import { mutateStore, toPublicStore } from "./store";
 import type {
@@ -41,6 +41,30 @@ export async function handleAgentMessage(text: string): Promise<AgentResult> {
     }
   });
 
+  return { store: toPublicStore(store), replies };
+}
+
+export async function pushPluginNow(): Promise<AgentResult> {
+  const replies: ChatMessage[] = [];
+  const store = await mutateStore(async (current) => {
+    const pending: PendingTask = current.pending ?? { goal: "update" };
+    pending.goal = "update";
+    fillFromMemory(current, pending);
+    const ask = nextAsk(pending);
+    pending.ask = ask;
+    current.pending = pending;
+    if (ask) {
+      const message = say(askPrompt(ask, pending));
+      current.messages.push(message);
+      replies.push(message);
+      return;
+    }
+    const produced = await deployNow(current, pending);
+    for (const message of produced) {
+      current.messages.push(message);
+      replies.push(message);
+    }
+  });
   return { store: toPublicStore(store), replies };
 }
 
@@ -119,8 +143,8 @@ function fillFromMemory(store: Store, pending: PendingTask) {
   }
 
   if (!pending.path && store.lastPluginId) {
-    const plugin = store.plugins.find((item) => item.id === store.lastPluginId) ?? store.plugins[0];
-    if (plugin) pending.path = plugin.path;
+    const plugin = store.plugins.find((item) => item.id === store.lastPluginId);
+    if (plugin && isDeployablePluginPath(plugin.path)) pending.path = plugin.path;
   }
 
   if (pending.url && (!pending.username || !pending.password)) {
@@ -139,7 +163,10 @@ function nextAsk(pending: PendingTask): PendingAsk | undefined {
   if (!pending.url) return "url";
   if (!pending.username) return "username";
   if (!pending.password) return "password";
-  if (!pending.path) return "path";
+  if (!pending.path || isWindowsAbsPath(pending.path)) {
+    if (pending.path && isWindowsAbsPath(pending.path)) pending.path = undefined;
+    return "path";
+  }
   return undefined;
 }
 
@@ -152,7 +179,7 @@ function askPrompt(ask: PendingAsk, pending: PendingTask): string {
     case "password":
       return `Username **${pending.username}**. Paste an Application Password (Users → Profile → Application Passwords). Not the login password.`;
     case "path":
-      return "What's the local plugin folder path? The directory Cursor/Claude saves, for example `examples/hello-presspush`.";
+      return "Use **Select plugin folder on this PC** below and pick your plugin folder (the one with the main .php file, for example Downloads\\Plug). Typing a C:\\ path will not work from this server — I need the files uploaded here. You can also use **Zip**.";
   }
 }
 
@@ -187,6 +214,13 @@ async function deployNow(store: Store, pending: PendingTask): Promise<ChatMessag
   let plugin: PluginRecord;
   try {
     plugin = await upsertPlugin(store, pending.path);
+    if (isSamplePluginPath(plugin.path)) {
+      return [
+        say(
+          "That's the bundled sample plugin, not your project. Use **Select plugin folder on this PC** and choose your real plugin folder (Downloads\\Plug), or Zip that folder. I will not push the sample to your live site.",
+        ),
+      ];
+    }
     steps.push({
       tool: "inspect_plugin",
       label: "Read local plugin folder",
@@ -194,6 +228,11 @@ async function deployNow(store: Store, pending: PendingTask): Promise<ChatMessag
       detail: `${plugin.name} ${plugin.version} · ${plugin.fileCount} files`,
     });
   } catch (error) {
+    if (pending.path && isWindowsAbsPath(pending.path)) {
+      pending.path = undefined;
+      pending.ask = "path";
+      store.pending = pending;
+    }
     steps.push({
       tool: "inspect_plugin",
       label: "Read local plugin folder",
@@ -258,7 +297,7 @@ async function deployNow(store: Store, pending: PendingTask): Promise<ChatMessag
       });
       return [
         say(
-          "Application passwords talk to the REST API. Upload this one-time helper (Plugins → Add New → Upload Plugin), activate it, then send the plugin folder or say **do update**.",
+          "Application passwords talk to the REST API. Upload this one-time helper (Plugins → Add New → Upload Plugin), activate it, then use **Select plugin folder on this PC** so I can push *your* plugin (the helper is not that plugin).",
           steps,
           { kind: "helper" },
         ),
@@ -331,7 +370,7 @@ async function deployNow(store: Store, pending: PendingTask): Promise<ChatMessag
     const verb = remote.action === "updated" ? "Updated" : "Installed";
     return [
       say(
-        `${verb} **${plugin.name} ${plugin.version}** on ${site.label}. When Cursor or Claude saves the plugin, say **do update**.`,
+        `${verb} **${plugin.name} ${plugin.version}** on ${site.label}. It should now appear under WP Admin → Plugins. When the files change, select the folder again or say **do update**.`,
         steps,
         { kind: "deploy", job },
       ),
@@ -348,7 +387,7 @@ async function deployNow(store: Store, pending: PendingTask): Promise<ChatMessag
       });
       return [
         say(
-          "Upload the one-time helper zip (Plugins → Add New → Upload Plugin), activate it, then say **do update**.",
+          "Upload the one-time helper zip (Plugins → Add New → Upload Plugin), activate it, then use **Select plugin folder on this PC** and pick your plugin (not the helper).",
           steps,
           { kind: "helper" },
         ),
@@ -414,8 +453,12 @@ function upsertSite(
 
 async function upsertPlugin(store: Store, pluginPath?: string): Promise<PluginRecord> {
   if (!pluginPath) {
-    const last = store.plugins.find((item) => item.id === store.lastPluginId) ?? store.plugins[0];
-    if (!last) throw new Error("No plugin folder yet. Send a path like examples/hello-presspush");
+    const last = store.plugins.find((item) => item.id === store.lastPluginId);
+    if (!last || !isDeployablePluginPath(last.path)) {
+      throw new Error(
+        "No plugin files on this server yet. Use Select plugin folder on this PC (or Zip) so I can read your plugin.",
+      );
+    }
     const inspected = await inspectPlugin(last.path);
     const record = toPluginRecord(inspected, last.id);
     Object.assign(last, record);
@@ -425,13 +468,24 @@ async function upsertPlugin(store: Store, pluginPath?: string): Promise<PluginRe
 
   const inspected = await inspectPlugin(pluginPath);
   const existing = store.plugins.find(
-    (item) => item.path === inspected.path || item.slug === inspected.slug,
+    (item) =>
+      item.path === inspected.path ||
+      (item.slug === inspected.slug && isDeployablePluginPath(item.path)),
   );
   const record = toPluginRecord(inspected, existing?.id);
   if (existing) Object.assign(existing, record);
   else store.plugins.push(record);
   store.lastPluginId = record.id;
   return existing ?? record;
+}
+
+function isSamplePluginPath(pluginPath: string): boolean {
+  const normalized = pluginPath.replace(/\\/g, "/");
+  return normalized.includes("/examples/hello-presspush");
+}
+
+function isDeployablePluginPath(pluginPath: string): boolean {
+  return Boolean(pluginPath) && !isWindowsAbsPath(pluginPath) && !isSamplePluginPath(pluginPath);
 }
 
 function extractSlots(text: string, ask?: PendingAsk) {
@@ -540,9 +594,10 @@ function isHelp(lower: string): boolean {
 
 function helpText(): string {
   return [
-    "I ask for the WordPress site URL, username, and application password, then the local plugin folder.",
-    "Create the application password under Users → Profile → Application Passwords.",
-    "After Cursor or Claude saves the plugin, say **do update** — I re-read that folder and push it.",
+    "I ask for the WordPress site URL, username, and application password.",
+    "Then use **Select plugin folder on this PC** (or Zip). I cannot open a C:\\ path from this server.",
+    "Plugin Agent Helper is only the installer. Your plugin shows up in WP Admin → Plugins after those files are uploaded and pushed.",
+    "Later, say **do update** to re-zip and overwrite the plugin on the site.",
   ].join("\n");
 }
 

@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { LoaderCircle, Paperclip, RefreshCw, SendHorizontal } from "lucide-react";
+import { FolderUp, LoaderCircle, RefreshCw, SendHorizontal } from "lucide-react";
 
 import { AgentText, MessageCard, PressMark, ToolSteps } from "@/components/message-cards";
 import { buttonVariants } from "@/components/ui/button";
-import type { PublicStore } from "@/lib/types";
+import type { PluginRecord, PublicStore } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const EMPTY: PublicStore = {
@@ -15,6 +15,12 @@ const EMPTY: PublicStore = {
   messages: [],
 };
 
+function pickLivePlugin(store: PublicStore): PluginRecord | undefined {
+  const byId = store.plugins.find((item) => item.id === store.lastPluginId);
+  if (byId && !byId.path.includes("/examples/")) return byId;
+  return undefined;
+}
+
 export function AgentApp() {
   const [store, setStore] = useState<PublicStore>(EMPTY);
   const [loading, setLoading] = useState(true);
@@ -22,6 +28,7 @@ export function AgentApp() {
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const busy = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -46,12 +53,13 @@ export function AgentApp() {
   }, [store.messages.length, sending]);
 
   const site = store.sites.find((item) => item.id === store.lastSiteId) ?? store.sites[0];
-  const plugin =
-    store.plugins.find((item) => item.id === store.lastPluginId) ?? store.plugins[0];
+  const plugin = pickLivePlugin(store);
+  const pushed = store.jobs.some((job) => job.status === "success");
 
   async function sendMessage(text: string) {
     const message = text.trim();
-    if (!message || sending) return;
+    if (!message || busy.current) return;
+    busy.current = true;
     if (inputRef.current) inputRef.current.value = "";
     setSending(true);
     setError(null);
@@ -80,17 +88,28 @@ export function AgentApp() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Send failed.");
     } finally {
+      busy.current = false;
       setSending(false);
       inputRef.current?.focus();
     }
   }
 
-  async function uploadPlugin(file: File) {
+  async function uploadPluginFiles(fileList: FileList) {
+    const files = [...fileList];
+    if (files.length === 0 || busy.current) return;
+    busy.current = true;
     setSending(true);
     setError(null);
     try {
       const body = new FormData();
-      body.set("file", file);
+      if (files.length === 1 && files[0].name.toLowerCase().endsWith(".zip")) {
+        body.set("file", files[0]);
+      } else {
+        for (const file of files) {
+          body.append("files", file);
+          body.append("relpaths", file.webkitRelativePath || file.name);
+        }
+      }
       const response = await fetch("/api/upload", { method: "POST", body });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Upload failed.");
@@ -98,6 +117,7 @@ export function AgentApp() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed.");
     } finally {
+      busy.current = false;
       setSending(false);
       inputRef.current?.focus();
     }
@@ -112,7 +132,7 @@ export function AgentApp() {
           <p className="mt-1 truncate text-xs text-muted-foreground">
             {plugin && site
               ? `${plugin.name} → ${site.label}`
-              : "I'll ask for username, app password, then the plugin folder"}
+              : "Select your plugin folder on this PC — a C:\\ path cannot be opened from here"}
           </p>
         </div>
         <button
@@ -167,10 +187,33 @@ export function AgentApp() {
       </div>
 
       <div className="shrink-0 border-t border-border/70 bg-background/95 px-4 py-4">
-        <div className="mx-auto flex max-w-2xl flex-wrap gap-2 pb-3">
-          <Chip label="Connect WordPress" onClick={() => sendMessage("connect wordpress")} />
-          <Chip label="Do update" onClick={() => sendMessage("do update")} />
-          <Chip label="How you work" onClick={() => sendMessage("help")} />
+        <div className="mx-auto max-w-2xl pb-3">
+          {!pushed ? (
+            <p className="mb-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-100">
+              Plugin Agent Helper is only the installer. Your plugin from{" "}
+              <span className="font-mono">Downloads\Plug</span> is not on WordPress until you select
+              that folder here (or upload a zip of it).
+            </p>
+          ) : null}
+          <label className="flex cursor-pointer flex-col items-center gap-2 rounded-2xl border border-dashed border-primary/50 bg-primary/8 px-4 py-4 text-center hover:bg-primary/12">
+            <FolderUp className="size-6 text-primary" />
+            <span className="text-sm font-medium">Select plugin folder on this PC</span>
+            <span className="text-xs text-muted-foreground">
+              Pick the folder with the main .php file. I will upload it and push it to WordPress.
+            </span>
+            <input
+              type="file"
+              className="sr-only"
+              disabled={sending}
+              multiple
+              {...{ webkitdirectory: "", directory: "" }}
+              onChange={(event) => {
+                const list = event.target.files;
+                event.target.value = "";
+                if (list && list.length > 0) void uploadPluginFiles(list);
+              }}
+            />
+          </label>
         </div>
         <form
           className="mx-auto flex max-w-2xl items-center gap-2"
@@ -189,25 +232,29 @@ export function AgentApp() {
             autoComplete="off"
             autoFocus
             disabled={sending}
-            placeholder="Type here, or upload the plugin zip"
+            placeholder="Or type a message — use the folder button for the plugin"
             className="h-11 min-w-0 flex-1 rounded-xl border border-input bg-input/30 px-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
           />
           <label
             className={cn(
-              buttonVariants({ size: "icon-lg", variant: "outline" }),
-              "h-11 w-11 cursor-pointer",
+              buttonVariants({ size: "lg", variant: "outline" }),
+              "h-11 cursor-pointer px-3",
             )}
           >
-            <Paperclip />
+            Zip
             <input
               type="file"
-              accept=".zip,.php,application/zip"
+              accept=".zip,application/zip"
               className="sr-only"
               disabled={sending}
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 event.target.value = "";
-                if (file) void uploadPlugin(file);
+                if (file) {
+                  const list = new DataTransfer();
+                  list.items.add(file);
+                  void uploadPluginFiles(list.files);
+                }
               }}
             />
           </label>
@@ -222,17 +269,5 @@ export function AgentApp() {
         </form>
       </div>
     </div>
-  );
-}
-
-function Chip({ label, onClick }: { label: string; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="rounded-full border border-border bg-card/80 px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
-    >
-      {label}
-    </button>
   );
 }

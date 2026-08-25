@@ -64,7 +64,8 @@ function HelperCard() {
           <p className="font-medium">One-time WordPress helper</p>
           <p className="mt-1 text-sm text-muted-foreground">
             Application passwords can only talk to the REST API. Upload this zip once, activate it,
-            then say do update.
+            then use <span className="font-medium text-foreground">Select plugin folder on this PC</span> for
+            your real plugin. The helper is not that plugin.
           </p>
         </div>
         <Button size="sm" render={<a href="/api/bridge" />}>
