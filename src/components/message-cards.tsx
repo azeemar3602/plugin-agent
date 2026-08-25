@@ -68,7 +68,7 @@ function HelperCard() {
             your real plugin. The helper is not that plugin.
           </p>
         </div>
-        <Button size="sm" render={<a href="/api/bridge" />}>
+        <Button size="sm" nativeButton={false} render={<a href="/api/bridge" />}>
           <Download />
           Zip
         </Button>

@@ -6,6 +6,7 @@ import { FolderUp, LoaderCircle, RefreshCw, SendHorizontal } from "lucide-react"
 import { AgentText, MessageCard, PressMark, ToolSteps } from "@/components/message-cards";
 import { buttonVariants } from "@/components/ui/button";
 import type { PluginRecord, PublicStore } from "@/lib/types";
+import type { ProbeResult, RemotePlugin } from "@/lib/wordpress";
 import { cn } from "@/lib/utils";
 
 const EMPTY: PublicStore = {
@@ -21,16 +22,47 @@ function pickLivePlugin(store: PublicStore): PluginRecord | undefined {
   return undefined;
 }
 
+function bindDirectoryInput(el: HTMLInputElement | null) {
+  if (!el) return;
+  el.setAttribute("webkitdirectory", "true");
+  el.setAttribute("directory", "true");
+  el.multiple = true;
+}
+
 export function AgentApp() {
   const [store, setStore] = useState<PublicStore>(EMPTY);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [remotePlugins, setRemotePlugins] = useState<RemotePlugin[]>([]);
+  const [probe, setProbe] = useState<ProbeResult | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const busy = useRef(false);
 
+  async function loadRemote() {
+    try {
+      const response = await fetch("/api/remote");
+      const data = (await response.json()) as {
+        probe?: ProbeResult;
+        plugins?: RemotePlugin[];
+      };
+      if (data.probe) setProbe(data.probe);
+      if (data.plugins) setRemotePlugins(data.plugins);
+    } catch {
+      /* shown from chat if needed */
+    }
+  }
+
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ok = params.get("ok");
+    const formError = params.get("error");
+    if (ok) setNotice("Upload reached the agent. Check the plugin list below — it should appear on WordPress if the push succeeded.");
+    if (formError) setError(formError);
+    if (ok || formError) window.history.replaceState({}, "", "/");
+
     let cancelled = false;
     (async () => {
       try {
@@ -42,6 +74,7 @@ export function AgentApp() {
       } finally {
         if (!cancelled) setLoading(false);
       }
+      await loadRemote();
     })();
     return () => {
       cancelled = true;
@@ -54,7 +87,6 @@ export function AgentApp() {
 
   const site = store.sites.find((item) => item.id === store.lastSiteId) ?? store.sites[0];
   const plugin = pickLivePlugin(store);
-  const pushed = store.jobs.some((job) => job.status === "success");
 
   async function sendMessage(text: string) {
     const message = text.trim();
@@ -94,35 +126,6 @@ export function AgentApp() {
     }
   }
 
-  async function uploadPluginFiles(fileList: FileList) {
-    const files = [...fileList];
-    if (files.length === 0 || busy.current) return;
-    busy.current = true;
-    setSending(true);
-    setError(null);
-    try {
-      const body = new FormData();
-      if (files.length === 1 && files[0].name.toLowerCase().endsWith(".zip")) {
-        body.set("file", files[0]);
-      } else {
-        for (const file of files) {
-          body.append("files", file);
-          body.append("relpaths", file.webkitRelativePath || file.name);
-        }
-      }
-      const response = await fetch("/api/upload", { method: "POST", body });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Upload failed.");
-      setStore(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed.");
-    } finally {
-      busy.current = false;
-      setSending(false);
-      inputRef.current?.focus();
-    }
-  }
-
   return (
     <div className="flex h-dvh min-h-0 flex-col overflow-hidden">
       <header className="flex shrink-0 items-center gap-3 border-b border-border/70 px-4 py-3 sm:px-6">
@@ -130,9 +133,7 @@ export function AgentApp() {
         <div className="min-w-0 flex-1">
           <p className="font-heading text-lg leading-none tracking-tight">Plugin Agent</p>
           <p className="mt-1 truncate text-xs text-muted-foreground">
-            {plugin && site
-              ? `${plugin.name} → ${site.label}`
-              : "Select your plugin folder on this PC — a C:\\ path cannot be opened from here"}
+            {site ? `Installing onto ${site.label}` : "WordPress plugin installer"}
           </p>
         </div>
         <button
@@ -151,11 +152,93 @@ export function AgentApp() {
           {error}
         </div>
       ) : null}
+      {notice ? (
+        <div className="border-b border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-100">
+          {notice}
+        </div>
+      ) : null}
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-8">
+        <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-6">
+          <section className="rounded-2xl border border-border/80 bg-background/60 p-4">
+            <p className="text-sm font-medium">Plugins currently on the WordPress site</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {probe?.status === "connected"
+                ? `Helper is connected (WordPress ${probe.wordpressVersion || "ok"}). Plugin Agent Helper is the installer only.`
+                : probe?.error || "Checking the site…"}
+            </p>
+            {remotePlugins.length > 0 ? (
+              <ul className="mt-3 space-y-1.5 text-sm">
+                {remotePlugins.map((item) => (
+                  <li key={item.file} className="flex justify-between gap-3">
+                    <span>
+                      {item.name}
+                      <span className="ml-2 font-mono text-[11px] text-muted-foreground">
+                        {item.version}
+                      </span>
+                    </span>
+                    <span className="text-xs text-muted-foreground">{item.status}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-3 text-sm text-muted-foreground">No plugin list yet.</p>
+            )}
+          </section>
+
+          <section className="rounded-2xl border border-dashed border-primary/50 bg-primary/8 p-4">
+            <p className="flex items-center gap-2 text-sm font-medium">
+              <FolderUp className="size-4 text-primary" />
+              Install your plugin (zip)
+            </p>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">
+              On your PC, zip the folder <span className="font-mono text-foreground">Downloads\Plug</span>{" "}
+              (the one with the main .php file). Then choose that zip and click Install. A typed C:\
+              path cannot be read from this server.
+            </p>
+            <form
+              action="/api/upload"
+              method="post"
+              encType="multipart/form-data"
+              className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center"
+            >
+              <input
+                type="file"
+                name="file"
+                required
+                accept=".zip,application/zip"
+                className="min-w-0 flex-1 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:text-sm file:font-medium file:text-primary-foreground"
+              />
+              <button type="submit" className={cn(buttonVariants({ size: "lg" }), "h-11 px-4")}>
+                Install on WordPress
+              </button>
+            </form>
+            <form
+              action="/api/upload"
+              method="post"
+              encType="multipart/form-data"
+              className="mt-4 border-t border-border/60 pt-4"
+            >
+              <p className="text-xs text-muted-foreground">Or pick the plugin folder itself:</p>
+              <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <input
+                  ref={bindDirectoryInput}
+                  type="file"
+                  name="files"
+                  className="min-w-0 flex-1 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-muted file:px-3 file:py-2 file:text-sm file:font-medium"
+                />
+                <button
+                  type="submit"
+                  className={cn(buttonVariants({ size: "lg", variant: "outline" }), "h-11 px-4")}
+                >
+                  Install folder
+                </button>
+              </div>
+            </form>
+          </section>
+
           {loading ? (
-            <p className="text-sm text-muted-foreground">Starting agent…</p>
+            <p className="text-sm text-muted-foreground">Loading chat…</p>
           ) : (
             store.messages.map((message) => (
               <article
@@ -187,34 +270,6 @@ export function AgentApp() {
       </div>
 
       <div className="shrink-0 border-t border-border/70 bg-background/95 px-4 py-4">
-        <div className="mx-auto max-w-2xl pb-3">
-          {!pushed ? (
-            <p className="mb-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-100">
-              Plugin Agent Helper is only the installer. Your plugin from{" "}
-              <span className="font-mono">Downloads\Plug</span> is not on WordPress until you select
-              that folder here (or upload a zip of it).
-            </p>
-          ) : null}
-          <label className="flex cursor-pointer flex-col items-center gap-2 rounded-2xl border border-dashed border-primary/50 bg-primary/8 px-4 py-4 text-center hover:bg-primary/12">
-            <FolderUp className="size-6 text-primary" />
-            <span className="text-sm font-medium">Select plugin folder on this PC</span>
-            <span className="text-xs text-muted-foreground">
-              Pick the folder with the main .php file. I will upload it and push it to WordPress.
-            </span>
-            <input
-              type="file"
-              className="sr-only"
-              disabled={sending}
-              multiple
-              {...{ webkitdirectory: "", directory: "" }}
-              onChange={(event) => {
-                const list = event.target.files;
-                event.target.value = "";
-                if (list && list.length > 0) void uploadPluginFiles(list);
-              }}
-            />
-          </label>
-        </div>
         <form
           className="mx-auto flex max-w-2xl items-center gap-2"
           onSubmit={(event) => {
@@ -230,34 +285,10 @@ export function AgentApp() {
             name="message"
             type="text"
             autoComplete="off"
-            autoFocus
             disabled={sending}
-            placeholder="Or type a message — use the folder button for the plugin"
+            placeholder="Message the agent"
             className="h-11 min-w-0 flex-1 rounded-xl border border-input bg-input/30 px-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
           />
-          <label
-            className={cn(
-              buttonVariants({ size: "lg", variant: "outline" }),
-              "h-11 cursor-pointer px-3",
-            )}
-          >
-            Zip
-            <input
-              type="file"
-              accept=".zip,application/zip"
-              className="sr-only"
-              disabled={sending}
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                event.target.value = "";
-                if (file) {
-                  const list = new DataTransfer();
-                  list.items.add(file);
-                  void uploadPluginFiles(list.files);
-                }
-              }}
-            />
-          </label>
           <button
             type="submit"
             disabled={sending}

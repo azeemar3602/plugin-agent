@@ -130,6 +130,38 @@ export async function probeSite(site: Site): Promise<ProbeResult> {
   return { status: "connected", wordpressVersion: payload.wordpress };
 }
 
+export type RemotePlugin = {
+  file: string;
+  name: string;
+  status: string;
+  version: string;
+};
+
+export async function listPlugins(site: Site): Promise<RemotePlugin[]> {
+  const result = await tryUrls(site.url, "wp/v2/plugins", {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      Authorization: authHeader(site),
+    },
+  });
+  if (!result.ok || !Array.isArray(result.json)) return [];
+  return result.json.map((item) => {
+    const rec = item as {
+      plugin?: string;
+      name?: string;
+      status?: string;
+      version?: string;
+    };
+    return {
+      file: rec.plugin || "",
+      name: rec.name || rec.plugin || "Plugin",
+      status: rec.status || "unknown",
+      version: rec.version || "",
+    };
+  });
+}
+
 export async function deployZip(options: {
   site: Site;
   zip: Buffer;

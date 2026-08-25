@@ -16,9 +16,7 @@ Open [http://127.0.0.1:43177](http://127.0.0.1:43177).
 1. Site URL (`https://yoursite.com`)
 2. WordPress username
 3. Application password — Users → Profile → Application Passwords (not the login password)
-4. Your plugin folder — click **Select plugin folder on this PC** (or **Zip** that folder)
-
-A typed `C:\...` path will not work if the agent is not running on that Windows PC. The files have to be uploaded here first.
+4. Your plugin folder — zip it, then use **Install on WordPress** (a typed `C:\` path will not work from this server)
 
 It remembers the site. Later:
 

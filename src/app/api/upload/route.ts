@@ -12,6 +12,25 @@ import { saveUploadedTree } from "@/lib/upload-tree";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+function isBrowserNavigation(request: Request): boolean {
+  const mode = request.headers.get("sec-fetch-mode");
+  if (mode === "navigate") return true;
+  if (mode === "cors" || mode === "same-origin") return false;
+  const accept = request.headers.get("accept") || "";
+  return accept.includes("text/html") && !accept.includes("application/json");
+}
+
+function reply(request: Request, body: unknown, error?: string) {
+  if (isBrowserNavigation(request)) {
+    const url = new URL("/", request.url);
+    if (error) url.searchParams.set("error", error.slice(0, 280));
+    else url.searchParams.set("ok", "1");
+    return Response.redirect(url, 303);
+  }
+  if (error) return Response.json({ error }, { status: 400 });
+  return Response.json(body);
+}
+
 export async function POST(request: Request) {
   const form = await request.formData();
   const many = form.getAll("files").filter((item): item is File => item instanceof File);
@@ -36,13 +55,10 @@ export async function POST(request: Request) {
       } else if (name.toLowerCase().endsWith(".php")) {
         pluginDir = await saveUploadedPhp(buffer, name);
       } else {
-        return Response.json(
-          { error: "Upload the plugin folder, a .zip, or the main .php file." },
-          { status: 400 },
-        );
+        return reply(request, null, "Upload a .zip of the plugin folder, or the main .php file.");
       }
     } else {
-      return Response.json({ error: "Choose the plugin folder or a zip." }, { status: 400 });
+      return reply(request, null, "Choose a plugin zip or folder.");
     }
 
     const inspected = await inspectPlugin(pluginDir);
@@ -110,14 +126,15 @@ export async function POST(request: Request) {
     );
     if (ready) {
       const result = await pushPluginNow();
-      return Response.json(result.store);
+      return reply(request, result.store);
     }
 
-    return Response.json(toPublicStore(store));
+    return reply(request, toPublicStore(store));
   } catch (error) {
-    return Response.json(
-      { error: error instanceof Error ? error.message : "Could not read that upload." },
-      { status: 400 },
+    return reply(
+      request,
+      null,
+      error instanceof Error ? error.message : "Could not read that upload.",
     );
   }
 }
