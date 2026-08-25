@@ -21,9 +21,9 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "PressPush — WordPress plugin deploy agent",
+  title: "Plugin Agent",
   description:
-    "Tell PressPush a WordPress site URL and a local plugin folder. It installs the plugin and pushes updates whenever you save in Cursor or Claude.",
+    "A chat agent that installs a local WordPress plugin on your site and updates it whenever you say so.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

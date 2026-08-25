@@ -1,15 +1,8 @@
-# PressPush
+# Plugin Agent
 
-A local agent that installs and updates WordPress plugins from a folder on your machine.
+A chat agent you run locally. It asks for WordPress credentials, then a plugin folder. After that, you say **do update** whenever Cursor or Claude saves the plugin.
 
-You give it:
-
-1. The WordPress site URL
-2. The path to the plugin you are editing in Cursor or Claude
-
-It zips that folder and installs it on the site. After you save local changes, tell it to **update** and it overwrites the plugin with the latest files.
-
-## Run it
+## Run
 
 ```bash
 npm install
@@ -18,53 +11,27 @@ npm run dev
 
 Open [http://127.0.0.1:43177](http://127.0.0.1:43177).
 
-## One-time WordPress setup
+## What the agent asks
 
-PressPush talks to WordPress over the REST API. Core WordPress cannot install a custom zip that way, so you install a tiny helper plugin once.
+1. Site URL (`https://yoursite.com`)
+2. WordPress username
+3. Application password — Users → Profile → Application Passwords (not the login password)
+4. Local plugin folder path
 
-1. In PressPush, download **Bridge plugin** (or open `/api/bridge`).
-2. On the site: **Plugins → Add New → Upload Plugin** → select `presspush-bridge.zip` → Activate.
-3. In WordPress, open **Users → Profile → Application Passwords**. Create one named `PressPush`. Copy it.
-4. In PressPush, save the site URL, your admin username, and that application password. Do not use your login password.
-
-Application passwords are stored in `data/store.json` on this machine. That file is gitignored.
-
-## Daily loop
-
-1. Build or edit the plugin locally (Cursor, Claude, or any editor).
-2. Tell the agent:
-
-   `install /absolute/path/to/my-plugin on https://yoursite.com`
-
-3. When the plugin is saved again, say `update`. PressPush re-reads the folder, zips it, and pushes it.
-
-You can also use **Track folder** in the sidebar and the **Update plugin** button.
-
-A sample plugin lives at `examples/hello-presspush`. Install that first if you want to see an admin notice change after you bump the version and update.
-
-## Chat examples
+It remembers that. Later:
 
 ```
-connect https://yoursite.com user admin password xxxx xxxx xxxx xxxx xxxx xxxx
-install examples/hello-presspush on https://yoursite.com
-update
-pack examples/hello-presspush
-check site
-download bridge
+do update
 ```
 
-If the bridge is not installed yet, **pack** still builds a zip you can upload yourself from WP Admin.
+It re-reads the folder, zips it, and overwrites the plugin on the site.
 
-## How a deploy works
+## One-time on WordPress
 
-1. PressPush inspects the folder for a PHP file with a `Plugin Name` header.
-2. It zips the folder (skips `node_modules`, `.git`, and other junk).
-3. It POSTs the zip to `/wp-json/presspush/v1/deploy` as the WordPress user.
-4. The bridge uses WordPress `Plugin_Upgrader` with overwrite, then activates the plugin.
+Application passwords only work with the REST API, and WordPress core cannot install a custom zip that way. The first time, the agent gives you `plugin-agent-bridge.zip`. Upload it once under **Plugins → Add New → Upload Plugin** and activate it. After that, the agent is just chat.
 
 ## Notes
 
-- This app must run on the same computer that has the plugin files (or a machine that can read that path).
-- The WordPress site must be reachable from that computer.
-- The site user needs `install_plugins` and `activate_plugins` (Administrator).
-- HTTPS on the site is strongly recommended because application passwords are sent as HTTP Basic auth.
+- Run this on a machine that can read the plugin folder and reach the WordPress site.
+- Credentials stay in `data/store.json` (gitignored).
+- The WordPress user must be an Administrator.

@@ -1,281 +1,170 @@
 import { inspectPlugin, toPluginRecord, zipPlugin } from "./plugin";
 import { nid, nowIso } from "./ids";
-import { mutateStore, toPublicSite } from "./store";
+import { mutateStore, toPublicStore } from "./store";
 import type {
   AgentCard,
+  AgentGoal,
+  AgentStep,
   ChatMessage,
   DeployJob,
+  PendingAsk,
+  PendingTask,
   PluginRecord,
   PublicStore,
   Site,
   Store,
 } from "./types";
 import { normalizeSiteUrl, siteHost } from "./urls";
-import { deployZip, probeSite } from "./wordpress";
+import { deployZip, looksLikeWordPress, probeSite } from "./wordpress";
 
 export type AgentResult = {
   store: PublicStore;
   replies: ChatMessage[];
 };
 
-type ParsedIntent = {
-  kind:
-    | "help"
-    | "connect"
-    | "install"
-    | "update"
-    | "status"
-    | "pack"
-    | "list"
-    | "remove-site"
-    | "remove-plugin"
-    | "bridge"
-    | "unknown";
-  url?: string;
-  path?: string;
-  username?: string;
-  password?: string;
-  raw: string;
-};
-
 export async function handleAgentMessage(text: string): Promise<AgentResult> {
-  const parsed = parseIntent(text);
   const replies: ChatMessage[] = [];
 
   const store = await mutateStore(async (current) => {
+    const redacted = redactSecrets(text, current);
     current.messages.push({
       id: nid(),
       role: "user",
-      text,
+      text: redacted,
       createdAt: nowIso(),
     });
 
-    const produced = await executeIntent(current, parsed);
+    const produced = await runAgent(current, text.trim());
     for (const message of produced) {
       current.messages.push(message);
       replies.push(message);
     }
   });
 
-  const { toPublicStore } = await import("./store");
   return { store: toPublicStore(store), replies };
 }
 
-export function parseIntent(raw: string): ParsedIntent {
-  const text = raw.trim();
+async function runAgent(store: Store, text: string): Promise<ChatMessage[]> {
   const lower = text.toLowerCase();
 
-  const url = extractUrl(text);
-  const path = extractPath(text, url);
-  const username = extractUsername(text);
-  const password = extractPassword(text);
-
-  if (/\b(help|how work|what can you|instructions)\b/i.test(text) && !path && !url) {
-    return { kind: "help", raw: text };
-  }
-  if (/\b(bridge|download bridge|helper plugin)\b/i.test(text) && !path) {
-    return { kind: "bridge", url, raw: text };
-  }
-  if (/\b(list|show sites|show plugins|what.?s connected)\b/i.test(text) && !path) {
-    return { kind: "list", raw: text };
-  }
-  if (/\b(remove|forget|delete|unlink)\b/i.test(lower) && /\bsite\b/i.test(lower)) {
-    return { kind: "remove-site", url, raw: text };
-  }
-  if (/\b(remove|forget|delete|unlink)\b/i.test(lower) && /\bplugin\b/i.test(lower)) {
-    return { kind: "remove-plugin", path, raw: text };
-  }
-  if (/\b(connect|link site|add site|login|credentials|application password)\b/i.test(text)) {
-    return { kind: "connect", url, username, password, raw: text };
-  }
-  if (/\b(status|probe|check site|is it ready|health)\b/i.test(text)) {
-    return { kind: "status", url, raw: text };
-  }
-  if (/\b(pack|zip|download zip|bundle)\b/i.test(text)) {
-    return { kind: "pack", path, url, raw: text };
-  }
-  if (/\b(update|sync|push again|redeploy)\b/i.test(text)) {
-    return { kind: "update", path, url, username, password, raw: text };
-  }
-  if (/\b(install|deploy|push|upload)\b/i.test(text) || (url && path)) {
-    return { kind: "install", path, url, username, password, raw: text };
-  }
-  if (url && (username || password)) {
-    return { kind: "connect", url, username, password, raw: text };
-  }
-  if (url) {
-    return { kind: "connect", url, username, password, raw: text };
-  }
-  if (path) {
-    return { kind: "install", path, url, raw: text };
+  if (isHelp(lower) && !extractUrl(text) && !extractPath(text)) {
+    return [say(helpText())];
   }
 
-  return { kind: "unknown", raw: text };
+  const pending: PendingTask = store.pending ?? { goal: inferGoal(text, store) };
+  const slots = extractSlots(text, pending.ask);
+  const commanded = /\b(install|update|sync|deploy|push|pack|zip|upload|connect)\b/i.test(text);
+
+  if (
+    !store.pending &&
+    !slots.url &&
+    !slots.path &&
+    !slots.username &&
+    !slots.password &&
+    !commanded
+  ) {
+    store.pending = { goal: "install", ask: "url" };
+    return [say("What's the WordPress site URL?")];
+  }
+
+  if (slots.url) pending.url = normalizeMaybeUrl(slots.url);
+  if (slots.path) pending.path = slots.path;
+  if (slots.username) pending.username = slots.username;
+  if (slots.password) pending.password = slots.password;
+  pending.goal = inferGoal(text, store, pending.goal);
+
+  fillFromMemory(store, pending);
+
+  const ask = nextAsk(pending);
+  pending.ask = ask;
+  store.pending = pending;
+
+  if (ask) {
+    return [say(askPrompt(ask, pending))];
+  }
+
+  if (pending.goal === "pack") {
+    return packPlugin(store, pending.path);
+  }
+
+  return deployNow(store, pending);
 }
 
-async function executeIntent(store: Store, intent: ParsedIntent): Promise<ChatMessage[]> {
-  switch (intent.kind) {
-    case "help":
-      return [agentText(helpText())];
-    case "bridge":
-      return [
-        agentText(
-          "Download PressPush Bridge and install it once on the WordPress site: WP Admin → Plugins → Add New → Upload Plugin → Activate. After that, deploys from this agent go through the REST API.",
-          { kind: "bridge" },
-        ),
-      ];
-    case "list":
-      return [listMessage(store)];
-    case "connect":
-      return connectSite(store, intent);
-    case "status":
-      return checkStatus(store, intent);
-    case "pack":
-      return packPlugin(store, intent);
-    case "install":
-      return deployPlugin(store, intent, "install");
-    case "update":
-      return deployPlugin(store, intent, "update");
-    case "remove-site":
-      return removeSite(store, intent);
-    case "remove-plugin":
-      return removePlugin(store, intent);
-    default:
-      return [
-        agentText(
-          "I need a WordPress site URL and a local plugin folder.\n\nExamples:\n• install examples/hello-presspush on https://mysite.com\n• connect https://mysite.com user admin password xxxx xxxx xxxx xxxx xxxx xxxx\n• update",
-        ),
-      ];
+function inferGoal(text: string, _store: Store, fallback: AgentGoal = "install"): AgentGoal {
+  if (/\b(pack|zip|download zip)\b/i.test(text)) return "pack";
+  if (
+    /\bdo\s+(the\s+)?update\b/i.test(text) ||
+    /\b(update|sync|redeploy)\b/i.test(text)
+  ) {
+    return "update";
+  }
+  if (/\b(install|deploy|upload|push)\b/i.test(text)) return "install";
+  return fallback;
+}
+
+function fillFromMemory(store: Store, pending: PendingTask) {
+  if (!pending.url && store.lastSiteId) {
+    const site = store.sites.find((item) => item.id === store.lastSiteId) ?? store.sites[0];
+    if (site) {
+      pending.url = site.url;
+      pending.username = pending.username || site.username;
+      pending.password = pending.password || site.password;
+    }
+  } else if (pending.url) {
+    const site = store.sites.find((item) => item.url === pending.url);
+    if (site) {
+      pending.username = pending.username || site.username;
+      pending.password = pending.password || site.password;
+    }
+  }
+
+  if (!pending.path && store.lastPluginId) {
+    const plugin = store.plugins.find((item) => item.id === store.lastPluginId) ?? store.plugins[0];
+    if (plugin) pending.path = plugin.path;
+  }
+
+  if (pending.url && (!pending.username || !pending.password)) {
+    const site = store.sites.find((item) => item.url === pending.url);
+    if (site) {
+      pending.username = pending.username || site.username;
+      pending.password = pending.password || site.password;
+    }
   }
 }
 
-async function connectSite(store: Store, intent: ParsedIntent): Promise<ChatMessage[]> {
-  if (!intent.url) {
-    return [
-      agentText(
-        "Send the site like this:\nconnect https://mysite.com user YOURUSER password xxxx xxxx xxxx xxxx xxxx xxxx\n\nThe password must be a WordPress Application Password (Users → Profile → Application Passwords), not the login password.",
-      ),
-    ];
+function nextAsk(pending: PendingTask): PendingAsk | undefined {
+  if (pending.goal === "pack") {
+    return pending.path ? undefined : "path";
   }
+  if (!pending.url) return "url";
+  if (!pending.username) return "username";
+  if (!pending.password) return "password";
+  if (!pending.path) return "path";
+  return undefined;
+}
 
-  let url: string;
+function askPrompt(ask: PendingAsk, pending: PendingTask): string {
+  switch (ask) {
+    case "url":
+      return "What's the WordPress site URL? Example: `https://yoursite.com`";
+    case "username":
+      return `Got ${pending.url}. What's the WordPress username?`;
+    case "password":
+      return `Username **${pending.username}**. Paste an Application Password (Users → Profile → Application Passwords). Not the login password.`;
+    case "path":
+      return "What's the local plugin folder path? The directory Cursor/Claude saves, for example `examples/hello-presspush`.";
+  }
+}
+
+async function packPlugin(store: Store, pluginPath?: string): Promise<ChatMessage[]> {
   try {
-    url = normalizeSiteUrl(intent.url);
-  } catch (error) {
-    return [agentText(errorMessage(error))];
-  }
-
-  const existing = findSite(store, url);
-  const site: Site = existing ?? {
-    id: nid(),
-    url,
-    username: "",
-    applicationPassword: "",
-    label: siteHost(url),
-    status: "unknown",
-  };
-
-  if (intent.username) site.username = intent.username;
-  if (intent.password) site.applicationPassword = intent.password.replace(/\s+/g, " ").trim();
-
-  if (!existing) store.sites.push(site);
-  store.lastSiteId = site.id;
-
-  if (!site.username || !site.applicationPassword) {
-    site.status = "reachable";
-    return [
-      agentText(
-        `Saved ${site.url}. I still need a WordPress administrator username and an Application Password.\n\nReply:\nconnect ${site.url} user YOURUSER password xxxx xxxx xxxx xxxx xxxx xxxx`,
-        { kind: "site", site: toPublicSite(site) },
-      ),
-    ];
-  }
-
-  const probe = await probeSite(site);
-  site.status = probe.status;
-  site.wordpressVersion = probe.wordpressVersion;
-  site.lastCheckedAt = nowIso();
-  site.lastError = probe.error;
-
-  if (probe.status === "bridge-ready") {
-    return [
-      agentText(
-        `${site.label} is ready. Bridge is installed, credentials work` +
-          (probe.wordpressVersion ? `, WordPress ${probe.wordpressVersion}` : "") +
-          `. Send a plugin folder to install, or say update after you save local changes.`,
-        { kind: "site", site: toPublicSite(site) },
-      ),
-    ];
-  }
-
-  if (probe.status === "bridge-missing") {
-    return [
-      agentText(
-        `${site.label} looks like WordPress, but PressPush Bridge is not installed yet. Download it, upload it once, activate it, then say “check site”.`,
-        { kind: "bridge" },
-      ),
-    ];
-  }
-
-  if (probe.status === "auth-failed") {
-    return [
-      agentText(
-        `WordPress at ${site.label} rejected the login. Create an Application Password under Users → Profile and send it again.`,
-        { kind: "site", site: toPublicSite(site) },
-      ),
-    ];
-  }
-
-  return [
-    agentText(
-      probe.error || `Could not confirm ${site.label}.`,
-      { kind: "site", site: toPublicSite(site) },
-    ),
-  ];
-}
-
-async function checkStatus(store: Store, intent: ParsedIntent): Promise<ChatMessage[]> {
-  const site = pickSite(store, intent.url);
-  if (!site) {
-    return [agentText("No site connected yet. Send a URL first.")];
-  }
-  if (!site.username || !site.applicationPassword) {
-    return [
-      agentText(
-        `I have ${site.url} but no credentials yet. Send:\nconnect ${site.url} user YOURUSER password YOUR_APP_PASSWORD`,
-      ),
-    ];
-  }
-
-  const probe = await probeSite(site);
-  site.status = probe.status;
-  site.wordpressVersion = probe.wordpressVersion;
-  site.lastCheckedAt = nowIso();
-  site.lastError = probe.error;
-  store.lastSiteId = site.id;
-
-  const extra =
-    probe.status === "bridge-ready"
-      ? " Ready to install and update plugins."
-      : probe.error
-        ? ` ${probe.error}`
-        : "";
-
-  return [
-    agentText(`Checked ${site.label}: ${statusLabel(probe.status)}.${extra}`, {
-      kind: "site",
-      site: toPublicSite(site),
-    }),
-  ];
-}
-
-async function packPlugin(store: Store, intent: ParsedIntent): Promise<ChatMessage[]> {
-  try {
-    const plugin = await upsertPlugin(store, intent.path);
+    const plugin = await upsertPlugin(store, pluginPath);
     const inspected = await inspectPlugin(plugin.path);
+    store.pending = undefined;
     return [
-      agentText(
-        `Packed ${plugin.name} ${plugin.version} (${inspected.files.length} files). Download the zip and upload it in WP Admin if you are not using the bridge yet.`,
+      say(
+        `Packed ${plugin.name} ${plugin.version} (${inspected.files.length} files). You can download the zip if you want to upload it yourself.`,
+        [],
         {
           kind: "pack",
           pluginId: plugin.id,
@@ -287,86 +176,120 @@ async function packPlugin(store: Store, intent: ParsedIntent): Promise<ChatMessa
       ),
     ];
   } catch (error) {
-    return [agentText(errorMessage(error))];
+    return [say(errorMessage(error))];
   }
 }
 
-async function deployPlugin(
-  store: Store,
-  intent: ParsedIntent,
-  action: "install" | "update",
-): Promise<ChatMessage[]> {
-  if (intent.url || intent.username || intent.password) {
-    const connectReplies = await connectSite(store, intent);
-    const site = pickSite(store, intent.url);
-    if (!site || site.status === "auth-failed" || site.status === "not-wordpress") {
-      return connectReplies;
-    }
-    if (!intent.path && !store.lastPluginId && store.plugins.length === 0) {
-      return [
-        ...connectReplies,
-        agentText("Site is saved. Now send the local plugin folder to install."),
-      ];
-    }
-  }
+async function deployNow(store: Store, pending: PendingTask): Promise<ChatMessage[]> {
+  const steps: AgentStep[] = [];
+  const action = pending.goal === "update" ? "update" : "install";
 
   let plugin: PluginRecord;
   try {
-    plugin = await upsertPlugin(store, intent.path);
+    plugin = await upsertPlugin(store, pending.path);
+    steps.push({
+      tool: "inspect_plugin",
+      label: "Read local plugin folder",
+      status: "done",
+      detail: `${plugin.name} ${plugin.version} · ${plugin.fileCount} files`,
+    });
   } catch (error) {
-    if (!intent.path && action === "update" && store.lastPluginId) {
-      return [agentText(errorMessage(error))];
-    }
-    if (!intent.path) {
+    steps.push({
+      tool: "inspect_plugin",
+      label: "Read local plugin folder",
+      status: "error",
+      detail: errorMessage(error),
+    });
+    return [say(errorMessage(error), steps)];
+  }
+
+  let url: string;
+  try {
+    url = normalizeSiteUrl(pending.url!);
+  } catch (error) {
+    return [say(errorMessage(error), steps)];
+  }
+
+  const site = upsertSite(store, {
+    url,
+    username: pending.username!,
+    password: pending.password!,
+  });
+
+  try {
+    const wordpress = await looksLikeWordPress(site.url);
+    steps.push({
+      tool: "check_site",
+      label: "Check WordPress site",
+      status: wordpress ? "done" : "error",
+      detail: wordpress ? site.url : "That URL does not look like WordPress.",
+    });
+    if (!wordpress) {
+      site.status = "not-wordpress";
       return [
-        agentText(
-          action === "update"
-            ? "Tell me which plugin folder to update, or install a plugin first."
-            : "Send the local plugin folder. Example: install examples/hello-presspush on https://mysite.com",
+        say(
+          `${site.url} does not look like a WordPress site (no wp-json). Check the domain.`,
+          steps,
         ),
       ];
     }
-    return [agentText(errorMessage(error))];
-  }
 
-  const site = pickSite(store, intent.url);
-  if (!site) {
-    return [
-      agentText(
-        `I found ${plugin.name} at ${plugin.path}. Add a WordPress site to install it:\ninstall ${plugin.path} on https://yoursite.com`,
-        { kind: "plugin", plugin },
-      ),
-    ];
-  }
-
-  if (!site.username || !site.applicationPassword) {
-    return [
-      agentText(
-        `Plugin is ready (${plugin.name} ${plugin.version}), but ${site.label} has no credentials yet.\nconnect ${site.url} user YOURUSER password YOUR_APP_PASSWORD`,
-        { kind: "plugin", plugin },
-      ),
-    ];
-  }
-
-  if (site.status === "bridge-missing") {
     const probe = await probeSite(site);
-    site.status = probe.status;
-    site.lastError = probe.error;
-    site.lastCheckedAt = nowIso();
-    if (probe.status === "bridge-missing") {
+    if (probe.status === "auth-failed") {
+      site.status = "auth-failed";
+      pending.password = undefined;
+      pending.ask = "password";
+      store.pending = pending;
+      steps.push({
+        tool: "wordpress_auth",
+        label: "Check application password",
+        status: "error",
+        detail: probe.error,
+      });
+      return [say(probe.error || "Application password was rejected.", steps)];
+    }
+    if (probe.status === "helper-missing") {
+      site.status = "helper-missing";
+      steps.push({
+        tool: "wordpress_helper",
+        label: "Find REST helper",
+        status: "error",
+        detail: "Helper plugin not installed yet",
+      });
       return [
-        agentText(
-          `I can see ${site.label}, but PressPush Bridge is not installed. Install the bridge once, then say “${action}”.`,
-          { kind: "bridge" },
+        say(
+          "Application passwords talk to the REST API. Upload this one-time helper (Plugins → Add New → Upload Plugin), activate it, then send the plugin folder or say **do update**.",
+          steps,
+          { kind: "helper" },
         ),
       ];
     }
+    steps.push({
+      tool: "wordpress_auth",
+      label: "Check application password",
+      status: "done",
+      detail: site.username,
+    });
+  } catch (error) {
+    steps.push({
+      tool: "check_site",
+      label: "Check WordPress site",
+      status: "error",
+      detail: errorMessage(error),
+    });
   }
 
   try {
     const inspected = await inspectPlugin(plugin.path);
     Object.assign(plugin, toPluginRecord(inspected, plugin.id));
     const zip = await zipPlugin(plugin.path, plugin.slug);
+    steps.push({
+      tool: "zip_plugin",
+      label: "Zip plugin from disk",
+      status: "done",
+      detail: `${plugin.slug}.zip`,
+    });
+
     const remote = await deployZip({
       site,
       zip,
@@ -375,16 +298,23 @@ async function deployPlugin(
       activate: true,
     });
 
+    steps.push({
+      tool: action === "update" ? "update_plugin" : "install_plugin",
+      label: action === "update" ? "Update plugin on the site" : "Install plugin on the site",
+      status: "done",
+      detail: remote.message,
+    });
+
     const job: DeployJob = {
       id: nid(),
       action,
       siteId: site.id,
       pluginId: plugin.id,
       pluginName: plugin.name,
-      pluginVersion: remote.version || plugin.version,
+      pluginVersion: plugin.version,
       siteUrl: site.url,
       status: "success",
-      message: remote.message || `Plugin ${remote.action} on ${site.label}.`,
+      message: remote.message || "Plugin pushed to WordPress.",
       files: inspected.files,
       remoteAction: remote.action,
       active: remote.active,
@@ -393,19 +323,43 @@ async function deployPlugin(
     store.jobs.push(job);
     store.lastPluginId = plugin.id;
     store.lastSiteId = site.id;
-    site.status = "bridge-ready";
+    store.pending = undefined;
+    site.status = "connected";
     site.lastError = undefined;
     site.lastCheckedAt = nowIso();
 
     const verb = remote.action === "updated" ? "Updated" : "Installed";
     return [
-      agentText(
-        `${verb} ${plugin.name} ${job.pluginVersion} on ${site.label}. It is ${remote.active ? "active" : "installed but not active"}. After Cursor or Claude saves the plugin, tell me to update.`,
+      say(
+        `${verb} **${plugin.name} ${plugin.version}** on ${site.label}. When Cursor or Claude saves the plugin, say **do update**.`,
+        steps,
         { kind: "deploy", job },
       ),
     ];
   } catch (error) {
-    const inspectedFiles = plugin ? (await inspectPlugin(plugin.path).catch(() => null))?.files ?? [] : [];
+    const message = errorMessage(error);
+    if (message === "HELPER_MISSING") {
+      site.status = "helper-missing";
+      steps.push({
+        tool: "install_plugin",
+        label: "Push plugin to WordPress",
+        status: "error",
+        detail: "Helper plugin not installed",
+      });
+      return [
+        say(
+          "Upload the one-time helper zip (Plugins → Add New → Upload Plugin), activate it, then say **do update**.",
+          steps,
+          { kind: "helper" },
+        ),
+      ];
+    }
+    steps.push({
+      tool: "install_plugin",
+      label: "Push plugin to WordPress",
+      status: "error",
+      detail: message,
+    });
     const job: DeployJob = {
       id: nid(),
       action,
@@ -415,45 +369,53 @@ async function deployPlugin(
       pluginVersion: plugin.version,
       siteUrl: site.url,
       status: "error",
-      message: errorMessage(error),
-      files: inspectedFiles,
+      message,
+      files: [],
       createdAt: nowIso(),
     };
     store.jobs.push(job);
-
-    const message = errorMessage(error);
-    if (/bridge is not installed/i.test(message)) {
-      site.status = "bridge-missing";
-      return [agentText(message, { kind: "bridge" })];
+    if (/application password|rejected the username/i.test(message)) {
+      site.status = "auth-failed";
+      pending.password = undefined;
+      pending.ask = "password";
+      store.pending = pending;
+    } else {
+      site.status = "error";
+      site.lastError = message;
     }
-    return [agentText(message, { kind: "deploy", job })];
+    site.lastCheckedAt = nowIso();
+    return [say(message, steps, { kind: "deploy", job })];
   }
 }
 
-async function removeSite(store: Store, intent: ParsedIntent): Promise<ChatMessage[]> {
-  const site = pickSite(store, intent.url);
-  if (!site) return [agentText("I do not have that site saved.")];
-  store.sites = store.sites.filter((item) => item.id !== site.id);
-  if (store.lastSiteId === site.id) store.lastSiteId = store.sites[0]?.id;
-  return [agentText(`Removed ${site.label}.`)];
+function upsertSite(
+  store: Store,
+  input: { url: string; username: string; password: string },
+): Site {
+  const existing = store.sites.find((item) => item.url === input.url);
+  if (existing) {
+    existing.username = input.username;
+    existing.password = input.password;
+    store.lastSiteId = existing.id;
+    return existing;
+  }
+  const site: Site = {
+    id: nid(),
+    url: input.url,
+    username: input.username,
+    password: input.password,
+    label: siteHost(input.url),
+    status: "unknown",
+  };
+  store.sites.push(site);
+  store.lastSiteId = site.id;
+  return site;
 }
 
-async function removePlugin(store: Store, intent: ParsedIntent): Promise<ChatMessage[]> {
-  const plugin = intent.path
-    ? store.plugins.find((item) => item.path.includes(intent.path!) || item.slug === intent.path)
-    : store.plugins.find((item) => item.id === store.lastPluginId) ?? store.plugins[0];
-  if (!plugin) return [agentText("I do not have that plugin saved.")];
-  store.plugins = store.plugins.filter((item) => item.id !== plugin.id);
-  if (store.lastPluginId === plugin.id) store.lastPluginId = store.plugins[0]?.id;
-  return [agentText(`Stopped tracking ${plugin.name}. Files on disk were not deleted.`)];
-}
-
-async function upsertPlugin(store: Store, path?: string): Promise<PluginRecord> {
-  if (!path) {
+async function upsertPlugin(store: Store, pluginPath?: string): Promise<PluginRecord> {
+  if (!pluginPath) {
     const last = store.plugins.find((item) => item.id === store.lastPluginId) ?? store.plugins[0];
-    if (!last) {
-      throw new Error("No plugin folder yet. Send a path like examples/hello-presspush");
-    }
+    if (!last) throw new Error("No plugin folder yet. Send a path like examples/hello-presspush");
     const inspected = await inspectPlugin(last.path);
     const record = toPluginRecord(inspected, last.id);
     Object.assign(last, record);
@@ -461,7 +423,7 @@ async function upsertPlugin(store: Store, path?: string): Promise<PluginRecord> 
     return last;
   }
 
-  const inspected = await inspectPlugin(path);
+  const inspected = await inspectPlugin(pluginPath);
   const existing = store.plugins.find(
     (item) => item.path === inspected.path || item.slug === inspected.slug,
   );
@@ -472,93 +434,32 @@ async function upsertPlugin(store: Store, path?: string): Promise<PluginRecord> 
   return existing ?? record;
 }
 
-function pickSite(store: Store, url?: string): Site | undefined {
-  if (url) {
-    try {
-      const normalized = normalizeSiteUrl(url);
-      return (
-        store.sites.find((site) => site.url === normalized) ??
-        store.sites.find((site) => site.url.includes(siteHost(normalized)))
-      );
-    } catch {
-      return store.sites.find((site) => site.url.includes(url) || site.label.includes(url));
-    }
+function extractSlots(text: string, ask?: PendingAsk) {
+  const url = extractUrl(text);
+  const path = extractPath(text, url);
+  let username = extractUsername(text);
+  let password = extractPassword(text);
+
+  if (ask === "password" && !password && !url && !path && !extractUsername(text)) {
+    password = text.trim();
+  } else if (ask === "username" && !username && !url && !path) {
+    username = text.trim().split(/\s+/)[0];
+  } else if (ask === "url" && !url && looksLikeHost(text.trim())) {
+    return { url: text.trim(), path, username, password };
+  } else if (ask === "path" && !path && text.trim() && !url) {
+    return { url, path: text.trim().replace(/^['"]|['"]$/g, ""), username, password };
   }
-  return store.sites.find((site) => site.id === store.lastSiteId) ?? store.sites[0];
-}
 
-function findSite(store: Store, url: string): Site | undefined {
-  return store.sites.find((site) => site.url === url);
-}
-
-function listMessage(store: Store): ChatMessage {
-  if (store.sites.length === 0 && store.plugins.length === 0) {
-    return agentText("Nothing connected yet. Send a site URL and a plugin folder.");
-  }
-  const sites = store.sites.length
-    ? store.sites.map((site) => `• ${site.label} — ${statusLabel(site.status)}`).join("\n")
-    : "• No sites";
-  const plugins = store.plugins.length
-    ? store.plugins.map((plugin) => `• ${plugin.name} ${plugin.version} — ${plugin.path}`).join("\n")
-    : "• No plugins";
-  return agentText(`Sites\n${sites}\n\nPlugins\n${plugins}`);
-}
-
-function helpText(): string {
-  return [
-    "How this works:",
-    "1. Install PressPush Bridge once on the WordPress site (download button in the sidebar).",
-    "2. Create a WordPress Application Password (Users → Profile).",
-    "3. Tell me: install /path/to/plugin on https://yoursite.com",
-    "4. When Cursor or Claude saves plugin files, say update. I zip the folder and overwrite the plugin on the site.",
-    "",
-    "You can also pack a zip and upload it yourself from WP Admin if you do not want the bridge yet.",
-  ].join("\n");
-}
-
-function statusLabel(status: Site["status"]): string {
-  switch (status) {
-    case "bridge-ready":
-      return "ready to push";
-    case "bridge-missing":
-      return "needs bridge plugin";
-    case "auth-failed":
-      return "bad credentials";
-    case "not-wordpress":
-      return "not WordPress";
-    case "reachable":
-      return "saved, waiting for credentials";
-    case "error":
-      return "unreachable";
-    default:
-      return "not checked";
-  }
-}
-
-function agentText(text: string, card?: AgentCard): ChatMessage {
-  return {
-    id: nid(),
-    role: "agent",
-    text,
-    createdAt: nowIso(),
-    card,
-  };
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Something went wrong.";
+  return { url, path, username, password };
 }
 
 function extractUrl(text: string): string | undefined {
   const match = text.match(/https?:\/\/[^\s)]+/i);
   if (match) return match[0].replace(/[.,;]+$/, "");
   const domain = text.match(
-    /(?:^|\s)((?:[a-z0-9-]+\.)+(?:com|net|org|io|dev|app|site|blog|co|in|uk)(?:\/[^\s]*)?)/i,
+    /(?:^|\s)((?:[a-z0-9-]+\.)+(?:com|net|org|io|dev|app|site|blog|co|in|uk|info)(?:\/[^\s]*)?)/i,
   );
-  if (domain && !domain[1].includes("example")) {
-    return domain[1];
-  }
-  return undefined;
+  return domain?.[1];
 }
 
 function extractPath(text: string, url?: string): string | undefined {
@@ -574,8 +475,8 @@ function extractPath(text: string, url?: string): string | undefined {
     return onTo[1].trim().replace(/^['"]|['"]$/g, "");
   }
 
-  const win = text.match(/[a-zA-Z]:[\\/][^\s"']+/);
-  if (win && win[0] !== url) return win[0];
+  const win = text.match(/(?:^|[\s"'])([a-zA-Z]:[\\/][^\s"']+)/);
+  if (win?.[1] && win[1] !== url) return win[1];
 
   const unix = text.match(/(?:^|\s)((?:~|\/|\.\/|\.\.\/)[^\s"']+)/);
   if (unix?.[1]) return unix[1];
@@ -591,25 +492,80 @@ function looksLikePath(value: string): boolean {
   return /[\\/]/.test(value) || value.startsWith("~") || value.startsWith(".");
 }
 
+function looksLikeHost(value: string): boolean {
+  return /^(?:https?:\/\/)?[a-z0-9.-]+\.[a-z]{2,}(?:\/\S*)?$/i.test(value);
+}
+
 function extractUsername(text: string): string | undefined {
   const match = text.match(
-    /(?:user(?:name)?|login|as)\s*[:=]?\s*["']?([A-Za-z0-9._@-]+)["']?/i,
+    /(?:user(?:name)?|login)\s*[:=]?\s*["']?([A-Za-z0-9._@-]+)["']?/i,
   );
-  if (!match) return undefined;
-  if (["on", "to", "the", "site", "plugin"].includes(match[1].toLowerCase())) return undefined;
-  return match[1];
+  return match?.[1];
 }
 
 function extractPassword(text: string): string | undefined {
   const labeled = text.match(
-    /(?:app(?:lication)?\s*)?pass(?:word)?\s*[:=]\s*["']?([A-Za-z0-9 -]{8,})["']?/i,
+    /(?:app(?:lication)?\s*)?pass(?:word)?\s*[:=]\s*["']?([^\n]+?)["']?\s*$/i,
   );
   if (labeled) return labeled[1].trim();
 
-  const afterPassword = text.match(
-    /(?:app(?:lication)?\s*)?password\s+([A-Za-z0-9]{4}(?:\s+[A-Za-z0-9]{4}){3,})/i,
+  const grouped = text.match(
+    /\b([A-Za-z0-9]{4}(?:\s+[A-Za-z0-9]{4}){5})\b/,
   );
-  if (afterPassword) return afterPassword[1].trim();
+  if (grouped) return grouped[1].trim();
 
   return undefined;
 }
+
+function normalizeMaybeUrl(value: string): string {
+  try {
+    return normalizeSiteUrl(value);
+  } catch {
+    return value;
+  }
+}
+
+function isHelp(lower: string): boolean {
+  return /\b(help|how (do|does|to)|what can you|instructions)\b/.test(lower);
+}
+
+function helpText(): string {
+  return [
+    "I ask for the WordPress site URL, username, and application password, then the local plugin folder.",
+    "Create the application password under Users → Profile → Application Passwords.",
+    "After Cursor or Claude saves the plugin, say **do update** — I re-read that folder and push it.",
+  ].join("\n");
+}
+
+function say(text: string, steps?: AgentStep[], card?: AgentCard): ChatMessage {
+  return {
+    id: nid(),
+    role: "agent",
+    text,
+    createdAt: nowIso(),
+    steps: steps?.length ? steps : undefined,
+    card,
+  };
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "Something went wrong.";
+}
+
+function redactSecrets(text: string, store: Store): string {
+  let out = text;
+  const secrets = [
+    store.pending?.password,
+    ...store.sites.map((site) => site.password),
+  ].filter(Boolean) as string[];
+  const extracted = extractPassword(text);
+  if (extracted) secrets.push(extracted);
+  if (store.pending?.ask === "password" && !extractUrl(text) && !extractPath(text)) {
+    secrets.push(text.trim());
+  }
+  for (const secret of secrets) {
+    if (secret.length >= 4) out = out.split(secret).join("••••••••");
+  }
+  return out;
+}
+

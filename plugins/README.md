@@ -1,1 +1,1 @@
-Drop plugin folders here, or point PressPush at any path on this machine.
+Drop plugin folders here, or tell the agent any path on this machine.

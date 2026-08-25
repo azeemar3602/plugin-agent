@@ -2,12 +2,23 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { nid, nowIso } from "./ids";
-import type { PublicStore, PublicSite, Site, Store } from "./types";
+import type { PublicPending, PublicSite, PublicStore, Site, Store } from "./types";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const STORE_PATH = path.join(DATA_DIR, "store.json");
+export const STORE_VERSION = 3;
+
+export const WELCOME_TEXT = `I'm your WordPress plugin agent. I'll ask for:
+
+1. Site URL
+2. WordPress username
+3. Application password (Users → Profile → Application Passwords)
+4. Local plugin folder
+
+I remember those. After Cursor or Claude saves the plugin, say **do update** and I zip the folder and push it to the site.`;
 
 const WELCOME: Store = {
+  version: STORE_VERSION,
   sites: [],
   plugins: [],
   jobs: [],
@@ -16,7 +27,7 @@ const WELCOME: Store = {
       id: nid(),
       role: "agent",
       createdAt: nowIso(),
-      text: "I'm PressPush. Send me a WordPress site URL and the local folder of the plugin you are building. I will zip it and install it on the site.\n\nAfter Cursor or Claude saves a change, tell me to update — I will read the latest files from disk and push them again.\n\nTry: install examples/hello-presspush on https://yoursite.com",
+      text: WELCOME_TEXT,
     },
   ],
 };
@@ -24,14 +35,50 @@ const WELCOME: Store = {
 export async function readStore(): Promise<Store> {
   try {
     const raw = await readFile(STORE_PATH, "utf8");
-    const parsed = JSON.parse(raw) as Store;
+    const parsed = JSON.parse(raw) as {
+      version?: number;
+      sites?: Array<{
+        id: string;
+        url: string;
+        username?: string;
+        password?: string;
+        applicationPassword?: string;
+        label: string;
+        status?: string;
+        lastCheckedAt?: string;
+        lastError?: string;
+      }>;
+      plugins?: Store["plugins"];
+      jobs?: Store["jobs"];
+      messages?: Store["messages"];
+      lastSiteId?: string;
+      lastPluginId?: string;
+      pending?: Store["pending"];
+    };
+    const sites: Site[] = (parsed.sites ?? []).map((site) => ({
+      id: site.id,
+      url: site.url,
+      username: site.username ?? "",
+      password: site.password || site.applicationPassword || "",
+      label: site.label,
+      status: normalizeStatus(site.status),
+      lastCheckedAt: site.lastCheckedAt,
+      lastError: site.lastError,
+    }));
+
+    const staleWelcome =
+      parsed.version !== STORE_VERSION ||
+      parsed.messages?.[0]?.text?.startsWith("I'm PressPush");
+
     return {
-      sites: parsed.sites ?? [],
+      version: STORE_VERSION,
+      sites,
       plugins: parsed.plugins ?? [],
       jobs: parsed.jobs ?? [],
-      messages: parsed.messages?.length ? parsed.messages : WELCOME.messages,
+      messages: staleWelcome || !parsed.messages?.length ? WELCOME.messages : parsed.messages,
       lastSiteId: parsed.lastSiteId,
       lastPluginId: parsed.lastPluginId,
+      pending: parsed.pending,
     };
   } catch {
     return structuredClone(WELCOME);
@@ -43,6 +90,7 @@ export async function writeStore(store: Store): Promise<void> {
   const tmp = `${STORE_PATH}.tmp`;
   const trimmed: Store = {
     ...store,
+    version: STORE_VERSION,
     jobs: store.jobs.slice(-40),
     messages: store.messages.slice(-80),
   };
@@ -57,10 +105,21 @@ export function toPublicSite(site: Site): PublicSite {
     username: site.username,
     label: site.label,
     status: site.status,
-    wordpressVersion: site.wordpressVersion,
     lastCheckedAt: site.lastCheckedAt,
     lastError: site.lastError,
-    hasPassword: Boolean(site.applicationPassword),
+    hasPassword: Boolean(site.password),
+  };
+}
+
+export function toPublicPending(pending?: Store["pending"]): PublicPending | undefined {
+  if (!pending) return undefined;
+  return {
+    goal: pending.goal,
+    url: pending.url,
+    path: pending.path,
+    username: pending.username,
+    hasPassword: Boolean(pending.password),
+    ask: pending.ask,
   };
 }
 
@@ -72,6 +131,7 @@ export function toPublicStore(store: Store): PublicStore {
     messages: store.messages,
     lastSiteId: store.lastSiteId,
     lastPluginId: store.lastPluginId,
+    pending: toPublicPending(store.pending),
   };
 }
 
@@ -82,4 +142,19 @@ export async function mutateStore(
   await fn(store);
   await writeStore(store);
   return store;
+}
+
+function normalizeStatus(status: Site["status"] | string | undefined): Site["status"] {
+  if (
+    status === "connected" ||
+    status === "helper-missing" ||
+    status === "auth-failed" ||
+    status === "not-wordpress" ||
+    status === "error"
+  ) {
+    return status;
+  }
+  if (status === "logged-in" || status === "bridge-ready") return "connected";
+  if (status === "bridge-missing") return "helper-missing";
+  return "unknown";
 }
