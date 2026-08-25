@@ -503,10 +503,13 @@ function looksLikeHost(value: string): boolean {
 }
 
 function extractUsername(text: string): string | undefined {
+  if (/^[a-zA-Z]:[\\/]/.test(text.trim()) || /\\/.test(text)) return undefined;
   const match = text.match(
-    /(?:user(?:name)?|login)\s*[:=]?\s*["']?([A-Za-z0-9._@-]+)["']?/i,
+    /\b(?:user(?:name)?|login)\b\s*[:=]?\s*["']?([A-Za-z0-9._@-]+)["']?/i,
   );
-  return match?.[1];
+  if (!match) return undefined;
+  if (["on", "to", "the", "site", "plugin"].includes(match[1].toLowerCase())) return undefined;
+  return match[1];
 }
 
 function extractPassword(text: string): string | undefined {
