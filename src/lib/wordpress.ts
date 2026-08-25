@@ -1,9 +1,20 @@
 import { restRouteFallback, restUrl } from "./urls";
 import type { Site, SiteStatus } from "./types";
 
+export type RemoteTemplate = {
+  id: number;
+  title: string;
+  type: string;
+  date?: string;
+};
+
 export type ProbeResult = {
   status: SiteStatus;
   wordpressVersion?: string;
+  helperVersion?: string;
+  elementor?: boolean;
+  elementorVersion?: string | null;
+  templates?: RemoteTemplate[];
   error?: string;
 };
 
@@ -126,8 +137,21 @@ export async function probeSite(site: Site): Promise<ProbeResult> {
     };
   }
 
-  const payload = result.json as { wordpress?: string };
-  return { status: "connected", wordpressVersion: payload.wordpress };
+  const payload = result.json as {
+    wordpress?: string;
+    version?: string;
+    elementor?: boolean;
+    elementorVersion?: string | null;
+    templates?: RemoteTemplate[];
+  };
+  return {
+    status: "connected",
+    wordpressVersion: payload.wordpress,
+    helperVersion: payload.version,
+    elementor: Boolean(payload.elementor),
+    elementorVersion: payload.elementorVersion,
+    templates: payload.templates ?? [],
+  };
 }
 
 export type RemotePlugin = {
@@ -205,6 +229,66 @@ export async function deployZip(options: {
   const payload = result.json as RemoteDeployResult;
   if (!payload?.ok) {
     throw new Error(payload?.message || "The site did not confirm the deploy.");
+  }
+  return payload;
+}
+
+export type TemplateImportResult = {
+  ok: boolean;
+  imported: Array<{ id?: number; title: string; type?: string; file?: string }>;
+  errors?: string[];
+  message?: string;
+};
+
+export async function importElementorFiles(options: {
+  site: Site;
+  files: Array<{ filename: string; buffer: Buffer }>;
+}): Promise<TemplateImportResult> {
+  if (options.files.length === 0) {
+    throw new Error("No Elementor template files to import.");
+  }
+
+  const form = new FormData();
+  for (const file of options.files) {
+    const type = file.filename.toLowerCase().endsWith(".zip")
+      ? "application/zip"
+      : "application/json";
+    form.append(
+      "files",
+      new Blob([new Uint8Array(file.buffer)], { type }),
+      file.filename,
+    );
+  }
+
+  const result = await tryUrls(options.site.url, "plugin-agent/v1/templates", {
+    method: "POST",
+    headers: {
+      Authorization: authHeader(options.site),
+      Accept: "application/json",
+    },
+    body: form,
+    signal: AbortSignal.timeout(90000),
+  });
+
+  if (result.status === 401 || result.status === 403) {
+    throw new Error(
+      "WordPress rejected the username or application password. Use an administrator Application Password from Users → Profile.",
+    );
+  }
+
+  if (result.status === 404) {
+    throw new Error(
+      "This Plugin Agent Helper is too old for templates. Download the helper zip from this app, upload it under Plugins → Add New → Upload Plugin (replace current), activate it, then drop the templates again.",
+    );
+  }
+
+  if (!result.ok) {
+    throw new Error(wpErrorMessage(result.json, result.text, result.status));
+  }
+
+  const payload = result.json as TemplateImportResult;
+  if (!payload?.ok) {
+    throw new Error(payload?.message || "The site did not import the templates.");
   }
   return payload;
 }

@@ -6,7 +6,7 @@ import { FolderUp, LoaderCircle, RefreshCw, SendHorizontal } from "lucide-react"
 import { AgentText, MessageCard, PressMark, ToolSteps } from "@/components/message-cards";
 import { buttonVariants } from "@/components/ui/button";
 import type { PluginRecord, PublicStore } from "@/lib/types";
-import type { ProbeResult, RemotePlugin } from "@/lib/wordpress";
+import type { ProbeResult, RemotePlugin, RemoteTemplate } from "@/lib/wordpress";
 import { cn } from "@/lib/utils";
 
 const EMPTY: PublicStore = {
@@ -33,9 +33,11 @@ export function AgentApp() {
   const [store, setStore] = useState<PublicStore>(EMPTY);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [remotePlugins, setRemotePlugins] = useState<RemotePlugin[]>([]);
+  const [remoteTemplates, setRemoteTemplates] = useState<RemoteTemplate[]>([]);
   const [probe, setProbe] = useState<ProbeResult | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -47,19 +49,59 @@ export function AgentApp() {
       const data = (await response.json()) as {
         probe?: ProbeResult;
         plugins?: RemotePlugin[];
+        templates?: RemoteTemplate[];
       };
       if (data.probe) setProbe(data.probe);
       if (data.plugins) setRemotePlugins(data.plugins);
+      setRemoteTemplates(data.templates ?? data.probe?.templates ?? []);
     } catch {
       /* shown from chat if needed */
     }
   }
 
+  async function uploadFileList(list: FileList | File[]) {
+    const files = [...list];
+    if (files.length === 0 || busy.current) return;
+    busy.current = true;
+    setSending(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const body = new FormData();
+      if (files.length === 1 && !files[0].webkitRelativePath) {
+        body.set("file", files[0]);
+      } else {
+        for (const file of files) {
+          body.append("files", file);
+          body.append("relpaths", file.webkitRelativePath || file.name);
+        }
+      }
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        headers: { Accept: "application/json" },
+        body,
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Upload failed.");
+      setStore(data);
+      setNotice("Done. Check Plugins and Elementor → Templates → Saved Templates.");
+      await loadRemote();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed.");
+    } finally {
+      busy.current = false;
+      setSending(false);
+    }
+  }
+
+  const uploadFileListRef = useRef(uploadFileList);
+  uploadFileListRef.current = uploadFileList;
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const ok = params.get("ok");
     const formError = params.get("error");
-    if (ok) setNotice("Upload reached the agent. Check the plugin list below — it should appear on WordPress if the push succeeded.");
+    if (ok) setNotice("Upload reached the agent. Check Plugins and Elementor templates below.");
     if (formError) setError(formError);
     if (ok || formError) window.history.replaceState({}, "", "/");
 
@@ -82,6 +124,29 @@ export function AgentApp() {
   }, []);
 
   useEffect(() => {
+    function onDragOver(event: DragEvent) {
+      event.preventDefault();
+      if (event.dataTransfer?.types?.includes("Files")) setDragging(true);
+    }
+    function onDragLeave(event: DragEvent) {
+      if (!event.relatedTarget) setDragging(false);
+    }
+    function onDrop(event: DragEvent) {
+      event.preventDefault();
+      setDragging(false);
+      if (event.dataTransfer?.files?.length) void uploadFileListRef.current(event.dataTransfer.files);
+    }
+    window.addEventListener("dragover", onDragOver);
+    window.addEventListener("dragleave", onDragLeave);
+    window.addEventListener("drop", onDrop);
+    return () => {
+      window.removeEventListener("dragover", onDragOver);
+      window.removeEventListener("dragleave", onDragLeave);
+      window.removeEventListener("drop", onDrop);
+    };
+  }, []);
+
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [store.messages.length, sending]);
 
@@ -90,30 +155,9 @@ export function AgentApp() {
 
   async function submitUpload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy.current) return;
-    const form = event.currentTarget;
-    const body = new FormData(form);
-    if (![...body.keys()].length) return;
-    busy.current = true;
-    setSending(true);
-    setError(null);
-    setNotice(null);
-    try {
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        headers: { Accept: "application/json" },
-        body,
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Upload failed.");
-      setStore(data);
-      setNotice("Installed. Refresh WP Admin → Plugins if it is not listed yet.");
-      await loadRemote();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed.");
-    } finally {
-      busy.current = false;
-      setSending(false);
+    const input = event.currentTarget.querySelector('input[type="file"]');
+    if (input instanceof HTMLInputElement && input.files?.length) {
+      await uploadFileList(input.files);
     }
   }
 
@@ -157,12 +201,20 @@ export function AgentApp() {
 
   return (
     <div className="flex h-dvh min-h-0 flex-col overflow-hidden">
+      {dragging ? (
+        <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-background/80">
+          <p className="rounded-2xl border border-dashed border-primary px-6 py-4 text-sm font-medium">
+            Drop plugin zip and/or Elementor JSON templates
+          </p>
+        </div>
+      ) : null}
+
       <header className="flex shrink-0 items-center gap-3 border-b border-border/70 px-4 py-3 sm:px-6">
         <PressMark className="text-primary size-8 shrink-0" />
         <div className="min-w-0 flex-1">
           <p className="font-heading text-lg leading-none tracking-tight">Plugin Agent</p>
           <p className="mt-1 truncate text-xs text-muted-foreground">
-            {site ? `Installing onto ${site.label}` : "WordPress plugin installer"}
+            {site ? `Installing onto ${site.label}` : "WordPress plugin and Elementor installer"}
           </p>
         </div>
         <button
@@ -190,10 +242,10 @@ export function AgentApp() {
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-6">
           <section className="rounded-2xl border border-border/80 bg-background/60 p-4">
-            <p className="text-sm font-medium">Plugins currently on the WordPress site</p>
+            <p className="text-sm font-medium">On the WordPress site</p>
             <p className="mt-1 text-xs text-muted-foreground">
               {probe?.status === "connected"
-                ? `Helper is connected (WordPress ${probe.wordpressVersion || "ok"}). Plugin Agent Helper is the installer only.`
+                ? `Helper ${probe.helperVersion || ""} · WordPress ${probe.wordpressVersion || "ok"} · Elementor ${probe.elementor ? probe.elementorVersion || "active" : "not installed"}`
                 : probe?.error || "Checking the site…"}
             </p>
             {remotePlugins.length > 0 ? (
@@ -213,17 +265,38 @@ export function AgentApp() {
             ) : (
               <p className="mt-3 text-sm text-muted-foreground">No plugin list yet.</p>
             )}
+            {probe?.elementor === false ? (
+              <p className="mt-3 text-xs text-amber-200">
+                Elementor is not active, so template JSON cannot be imported yet. Install Elementor,
+                then drop templates again.
+              </p>
+            ) : null}
+            {remoteTemplates.length > 0 ? (
+              <div className="mt-4 border-t border-border/60 pt-3">
+                <p className="text-xs font-medium text-muted-foreground">
+                  Elementor saved templates
+                </p>
+                <ul className="mt-2 space-y-1 text-sm">
+                  {remoteTemplates.slice(0, 12).map((item) => (
+                    <li key={item.id} className="flex justify-between gap-3">
+                      <span>{item.title}</span>
+                      <span className="text-xs text-muted-foreground">{item.type || "template"}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
           </section>
 
           <section className="rounded-2xl border border-dashed border-primary/50 bg-primary/8 p-4">
             <p className="flex items-center gap-2 text-sm font-medium">
               <FolderUp className="size-4 text-primary" />
-              Install your plugin (zip)
+              Drag plugin and templates here
             </p>
             <p className="mt-2 text-xs leading-5 text-muted-foreground">
-              On your PC, zip the folder <span className="font-mono text-foreground">Downloads\Plug</span>{" "}
-              (the one with the main .php file). Then choose that zip and click Install. A typed C:\
-              path cannot be read from this server.
+              Drop a plugin zip (or folder) and Elementor template JSON together. Plugins go to{" "}
+              <span className="text-foreground">Plugins</span>. Templates go to{" "}
+              <span className="text-foreground">Templates → Saved Templates</span>.
             </p>
             <form
               action="/api/upload"
@@ -234,9 +307,9 @@ export function AgentApp() {
             >
               <input
                 type="file"
-                name="file"
-                required
-                accept=".zip,application/zip"
+                name="files"
+                multiple
+                accept=".zip,.json,.php,application/zip,application/json"
                 className="min-w-0 flex-1 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:text-sm file:font-medium file:text-primary-foreground"
               />
               <button
@@ -254,7 +327,7 @@ export function AgentApp() {
               onSubmit={(event) => void submitUpload(event)}
               className="mt-4 border-t border-border/60 pt-4"
             >
-              <p className="text-xs text-muted-foreground">Or pick the plugin folder itself:</p>
+              <p className="text-xs text-muted-foreground">Or pick a plugin folder:</p>
               <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center">
                 <input
                   ref={bindDirectoryInput}

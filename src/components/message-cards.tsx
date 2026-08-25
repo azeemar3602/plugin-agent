@@ -10,6 +10,7 @@ export function MessageCard({ card }: { card: AgentCard }) {
   if (card.kind === "deploy") return <DeployCard job={card.job} />;
   if (card.kind === "plugin") return <PluginCard plugin={card.plugin} />;
   if (card.kind === "site") return <SiteCard site={card.site} />;
+  if (card.kind === "templates") return <TemplatesCard card={card} />;
   if (card.kind === "helper") return <HelperCard />;
   if (card.kind === "pack") {
     return (
@@ -53,6 +54,34 @@ export function ToolSteps({ steps }: { steps: AgentStep[] }) {
         </li>
       ))}
     </ol>
+  );
+}
+
+function TemplatesCard({
+  card,
+}: {
+  card: Extract<AgentCard, { kind: "templates" }>;
+}) {
+  return (
+    <div className="mt-3 rounded-xl border border-border/80 bg-background/50 p-3">
+      {card.imported.length > 0 ? (
+        <ul className="space-y-1 text-sm">
+          {card.imported.map((item, index) => (
+            <li key={`${item.title}-${index}`}>
+              <span className="font-medium">{item.title}</span>
+              {item.type ? (
+                <span className="ml-2 text-xs text-muted-foreground">{item.type}</span>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm text-muted-foreground">No templates imported.</p>
+      )}
+      {card.errors?.length ? (
+        <p className="mt-2 text-xs text-destructive">{card.errors.join(" ")}</p>
+      ) : null}
+    </div>
   );
 }
 

@@ -1,6 +1,6 @@
 # Plugin Agent
 
-A chat agent that asks for WordPress credentials, then uploads a plugin folder from your PC and installs or updates it on the site.
+A chat agent that installs WordPress plugins and imports Elementor templates. Drag a plugin zip and template JSON onto the window — it classifies each file and pushes it to the site.
 
 ## Run
 
@@ -9,31 +9,30 @@ npm install
 npm run dev
 ```
 
-Open [http://127.0.0.1:43177](http://127.0.0.1:43177).
+Open [http://127.0.0.1:43177](http://127.0.0.1:43177). Not `http://0.0.0.0`.
 
-## What the agent asks
+## What it needs
 
 1. Site URL (`https://yoursite.com`)
 2. WordPress username
 3. Application password — Users → Profile → Application Passwords (not the login password)
-4. Your plugin folder — zip it, then use **Install on WordPress** (a typed `C:\` path will not work from this server)
+4. Files: plugin zip/folder and/or Elementor `.json` templates (or a zip of those JSON files)
 
-It remembers the site. Later:
+Then drag them in, or use **Install on WordPress**.
 
-```
-do update
-```
+## Where things go
 
-That re-reads the last uploaded folder, zips it, and overwrites the plugin on WordPress.
+- Plugin zip/folder → **WP Admin → Plugins**
+- Elementor JSON (Templates → Saved Templates → Export) → **Templates → Saved Templates**
+- Elementor must be installed and active before templates can import
 
-## One-time on WordPress
+Later, **do update** re-zips the last plugin folder and overwrites it on WordPress.
 
-Application passwords only work with the REST API, and WordPress core cannot install a custom zip that way. The first time, the agent gives you `plugin-agent-bridge.zip` (**Plugin Agent Helper**). Upload it once under **Plugins → Add New → Upload Plugin** and activate it.
+## One-time helper
 
-The helper is only the installer. Your real plugin appears under **Plugins** after you select its folder in this app and the agent reports a successful install.
+The first time, upload `plugin-agent-bridge.zip` (**Plugin Agent Helper**) under **Plugins → Add New → Upload Plugin** and activate it. If you already have an older helper, replace it with the current zip so template import is available.
 
 ## Notes
 
 - The WordPress user must be an Administrator.
 - Credentials stay in `data/store.json` (gitignored).
-- If folder pick is unavailable, zip the plugin folder (the directory with the main `.php` file) and use **Zip**.

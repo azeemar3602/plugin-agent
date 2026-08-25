@@ -33,7 +33,7 @@ export type PluginRecord = {
   lastInspectedAt: string;
 };
 
-export type DeployAction = "install" | "update" | "pack";
+export type DeployAction = "install" | "update" | "pack" | "template";
 
 export type DeployJob = {
   id: string;
@@ -70,7 +70,12 @@ export type AgentCard =
       version: string;
       files: string[];
     }
-  | { kind: "helper" };
+  | { kind: "helper" }
+  | {
+      kind: "templates";
+      imported: Array<{ title: string; type?: string }>;
+      errors?: string[];
+    };
 
 export type ChatMessage = {
   id: string;

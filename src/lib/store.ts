@@ -8,16 +8,14 @@ const DATA_DIR = path.join(process.cwd(), "data");
 const STORE_PATH = path.join(DATA_DIR, "store.json");
 export const STORE_VERSION = 3;
 
-export const WELCOME_TEXT = `I'm your WordPress plugin agent. I'll ask for:
+export const WELCOME_TEXT = `I'm your WordPress plugin and Elementor template agent. I'll ask for:
 
 1. Site URL
 2. WordPress username
 3. Application password (Users → Profile → Application Passwords)
-4. Your plugin folder — use **Select plugin folder on this PC** (a typed C:\\ path will not work from this server)
+4. Then drag a plugin zip and/or Elementor template JSON onto this window
 
-Plugin Agent Helper is only the installer. Your real plugin is not on WordPress until those files are uploaded here and pushed.
-
-After that, say **do update** whenever the plugin files change.`;
+Plugins install under WP Admin → Plugins. Templates land in Templates → Saved Templates (Elementor must be active).`;
 
 const WELCOME: Store = {
   version: STORE_VERSION,

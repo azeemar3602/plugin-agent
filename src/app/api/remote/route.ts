@@ -17,5 +17,7 @@ export async function GET() {
     site: toPublicSite(site),
     probe,
     plugins,
+    templates: probe.templates ?? [],
+    elementor: probe.elementor ?? false,
   });
 }
