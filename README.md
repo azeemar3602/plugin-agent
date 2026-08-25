@@ -35,4 +35,5 @@ The first time, upload `plugin-agent-bridge.zip` (**Plugin Agent Helper**) under
 ## Notes
 
 - The WordPress user must be an Administrator.
+- To use a second website: click **Add site** (or paste its URL), enter that site’s username and application password, and install Plugin Agent Helper there too. The header dropdown switches which site drops go to.
 - Credentials stay in `data/store.json` (gitignored).

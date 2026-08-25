@@ -161,6 +161,30 @@ export function AgentApp() {
     }
   }
 
+  async function switchSite(id: string) {
+    if (!id || busy.current) return;
+    busy.current = true;
+    setSending(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/site", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not switch site.");
+      setStore(data);
+      setNotice(`Now installing onto ${data.sites?.find((item: { id: string }) => item.id === id)?.label || "that site"}.`);
+      await loadRemote();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not switch site.");
+    } finally {
+      busy.current = false;
+      setSending(false);
+    }
+  }
+
   async function sendMessage(text: string) {
     const message = text.trim();
     if (!message || busy.current) return;
@@ -211,11 +235,37 @@ export function AgentApp() {
 
       <header className="flex shrink-0 items-center gap-3 border-b border-border/70 px-4 py-3 sm:px-6">
         <PressMark className="text-primary size-8 shrink-0" />
-        <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
           <p className="font-heading text-lg leading-none tracking-tight">Plugin Agent</p>
-          <p className="mt-1 truncate text-xs text-muted-foreground">
-            {site ? `Installing onto ${site.label}` : "WordPress plugin and Elementor installer"}
-          </p>
+          {store.sites.length > 0 ? (
+            <div className="flex min-w-0 items-center gap-2">
+              <select
+                value={site?.id ?? ""}
+                disabled={sending}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  if (value === "__add__") {
+                    event.target.value = site?.id ?? "";
+                    void sendMessage("add site");
+                    return;
+                  }
+                  void switchSite(value);
+                }}
+                className="h-7 max-w-[min(100%,16rem)] truncate rounded-md border border-input bg-input/30 px-2 text-xs outline-none focus-visible:border-ring"
+              >
+                {store.sites.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.label}
+                  </option>
+                ))}
+                <option value="__add__">Add site…</option>
+              </select>
+            </div>
+          ) : (
+            <p className="truncate text-xs text-muted-foreground">
+              WordPress plugin and Elementor installer
+            </p>
+          )}
         </div>
         <button
           type="button"

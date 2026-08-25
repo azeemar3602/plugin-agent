@@ -1,6 +1,6 @@
 import { inspectPlugin, isWindowsAbsPath, toPluginRecord, zipPlugin } from "./plugin";
 import { nid, nowIso } from "./ids";
-import { mutateStore, toPublicStore } from "./store";
+import { mutateStore, toPublicSite, toPublicStore } from "./store";
 import type {
   AgentCard,
   AgentGoal,
@@ -44,6 +44,21 @@ export async function handleAgentMessage(text: string): Promise<AgentResult> {
   return { store: toPublicStore(store), replies };
 }
 
+export async function selectStoredSite(siteId: string): Promise<PublicStore> {
+  const store = await mutateStore((current) => {
+    const site = current.sites.find((item) => item.id === siteId);
+    if (!site) throw new Error("That site is not saved yet.");
+    current.lastSiteId = site.id;
+    current.pending = {
+      goal: "update",
+      url: site.url,
+      username: site.username,
+      password: site.password,
+    };
+  });
+  return toPublicStore(store);
+}
+
 export async function pushPluginNow(): Promise<AgentResult> {
   const replies: ChatMessage[] = [];
   const store = await mutateStore(async (current) => {
@@ -55,6 +70,14 @@ export async function pushPluginNow(): Promise<AgentResult> {
     current.pending = pending;
     if (ask) {
       const message = say(askPrompt(ask, pending));
+      current.messages.push(message);
+      replies.push(message);
+      return;
+    }
+    if (!pending.path) {
+      const message = say(
+        "This site is connected, but I don't have plugin files yet. Drop the plugin zip or folder.",
+      );
       current.messages.push(message);
       replies.push(message);
       return;
@@ -75,7 +98,35 @@ async function runAgent(store: Store, text: string): Promise<ChatMessage[]> {
     return [say(helpText())];
   }
 
+  if (isNewSiteCommand(lower) && !extractPassword(text)) {
+    const url = extractUrl(text);
+    store.pending = {
+      goal: "install",
+      url: url ? normalizeMaybeUrl(url) : undefined,
+      ask: url ? "username" : "url",
+    };
+    if (url) {
+      const known = store.sites.find((item) => item.url === store.pending?.url);
+      if (known) {
+        store.pending.username = known.username;
+        store.pending.password = known.password;
+        store.lastSiteId = known.id;
+        store.pending.ask = undefined;
+        return [
+          say(
+            `Switched to **${known.label}**. Drop a plugin or Elementor templates — they install on this site.`,
+            [],
+            { kind: "site", site: toPublicSite(known) },
+          ),
+        ];
+      }
+      return [say(`Got ${store.pending.url}. What's the WordPress username for this site?`)];
+    }
+    return [say("What's the URL of the other WordPress site?")];
+  }
+
   const pending: PendingTask = store.pending ?? { goal: inferGoal(text, store) };
+  const previousUrl = pending.url;
   const slots = extractSlots(text, pending.ask);
   const commanded = /\b(install|update|sync|deploy|push|pack|zip|upload|connect)\b/i.test(text);
 
@@ -91,7 +142,15 @@ async function runAgent(store: Store, text: string): Promise<ChatMessage[]> {
     return [say("What's the WordPress site URL?")];
   }
 
-  if (slots.url) pending.url = normalizeMaybeUrl(slots.url);
+  if (slots.url) {
+    const nextUrl = normalizeMaybeUrl(slots.url);
+    if (previousUrl && previousUrl !== nextUrl) {
+      const known = store.sites.find((item) => item.url === nextUrl);
+      pending.username = known?.username;
+      pending.password = known?.password;
+    }
+    pending.url = nextUrl;
+  }
   if (slots.path) pending.path = slots.path;
   if (slots.username) pending.username = slots.username;
   if (slots.password) pending.password = slots.password;
@@ -109,6 +168,23 @@ async function runAgent(store: Store, text: string): Promise<ChatMessage[]> {
 
   if (pending.goal === "pack") {
     return packPlugin(store, pending.path);
+  }
+
+  if (!pending.path) {
+    const site = upsertSite(store, {
+      url: normalizeMaybeUrl(pending.url!),
+      username: pending.username!,
+      password: pending.password!,
+    });
+    pending.ask = undefined;
+    store.pending = pending;
+    return [
+      say(
+        `Connected **${site.label}**. Drop a plugin zip or Elementor JSON to install on this site. For another website, click **Add site** or paste its URL.`,
+        [],
+        { kind: "site", site: toPublicSite(site) },
+      ),
+    ];
   }
 
   return deployNow(store, pending);
@@ -163,10 +239,6 @@ function nextAsk(pending: PendingTask): PendingAsk | undefined {
   if (!pending.url) return "url";
   if (!pending.username) return "username";
   if (!pending.password) return "password";
-  if (!pending.path || isWindowsAbsPath(pending.path)) {
-    if (pending.path && isWindowsAbsPath(pending.path)) pending.path = undefined;
-    return "path";
-  }
   return undefined;
 }
 
@@ -592,12 +664,18 @@ function isHelp(lower: string): boolean {
   return /\b(help|how (do|does|to)|what can you|instructions)\b/.test(lower);
 }
 
+function isNewSiteCommand(lower: string): boolean {
+  return /\b(add|another|second|new|other|different|switch)\b.{0,24}\b(web\s*)?site\b/.test(
+    lower,
+  );
+}
+
 function helpText(): string {
   return [
-    "I ask for the WordPress site URL, username, and application password.",
-    "Then use **Select plugin folder on this PC** (or Zip). I cannot open a C:\\ path from this server.",
-    "Plugin Agent Helper is only the installer. Your plugin shows up in WP Admin → Plugins after those files are uploaded and pushed.",
-    "Later, say **do update** to re-zip and overwrite the plugin on the site.",
+    "I can connect more than one WordPress site. Use **Add site**, or paste the second site URL.",
+    "Each site needs its own username and application password.",
+    "Then drag a plugin zip and/or Elementor JSON — they install on the site selected in the header.",
+    "Plugin Agent Helper must be installed (once) on each site.",
   ].join("\n");
 }
 
