@@ -75,6 +75,14 @@ export type AgentCard =
       kind: "templates";
       imported: Array<{ title: string; type?: string }>;
       errors?: string[];
+    }
+  | {
+      kind: "design";
+      designId: string;
+      title: string;
+      widgetsUsed: string[];
+      sectionRoles: string[];
+      imported: boolean;
     };
 
 export type ChatMessage = {

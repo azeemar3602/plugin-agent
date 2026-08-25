@@ -11,6 +11,7 @@ export function MessageCard({ card }: { card: AgentCard }) {
   if (card.kind === "plugin") return <PluginCard plugin={card.plugin} />;
   if (card.kind === "site") return <SiteCard site={card.site} />;
   if (card.kind === "templates") return <TemplatesCard card={card} />;
+  if (card.kind === "design") return <DesignCard card={card} />;
   if (card.kind === "helper") return <HelperCard />;
   if (card.kind === "pack") {
     return (
@@ -81,6 +82,31 @@ function TemplatesCard({
       {card.errors?.length ? (
         <p className="mt-2 text-xs text-destructive">{card.errors.join(" ")}</p>
       ) : null}
+    </div>
+  );
+}
+
+function DesignCard({ card }: { card: Extract<AgentCard, { kind: "design" }> }) {
+  return (
+    <div className="mt-3 rounded-xl border border-border/80 bg-background/50 p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="font-medium">{card.title}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Layout: {card.sectionRoles.join(" → ") || "sections"}
+          </p>
+          <p className="mt-1 font-mono text-[11px] text-muted-foreground">
+            Widgets: {card.widgetsUsed.join(", ") || "heading, text, button"}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {card.imported ? "Imported to Elementor Saved Templates." : "Download JSON and import in Elementor."}
+          </p>
+        </div>
+        <Button size="sm" nativeButton={false} render={<a href={`/api/design/${card.designId}`} />}>
+          <Download />
+          JSON
+        </Button>
+      </div>
     </div>
   );
 }

@@ -6,6 +6,7 @@ A chat agent that installs WordPress plugins and imports Elementor templates. Dr
 
 ```bash
 npm install
+pip3 install -r requirements.txt
 npm run dev
 ```
 
@@ -16,9 +17,11 @@ Open [http://127.0.0.1:43177](http://127.0.0.1:43177). Not `http://0.0.0.0`.
 1. Site URL (`https://yoursite.com`)
 2. WordPress username
 3. Application password — Users → Profile → Application Passwords (not the login password)
-4. Files: plugin zip/folder and/or Elementor `.json` templates (or a zip of those JSON files)
+4. Files: plugin zip/folder, Elementor `.json`, and/or a JPEG, PNG, or PDF of a page design
 
 Then drag them in, or use **Install on WordPress**.
+
+A design file is turned into Elementor JSON from the layout bands in the mockup. Images and icons are placeholders. Widgets are picked from plugins that are active on the selected site (Give → donation shortcode, FormLayer → form, Queryra → search, Polylang → language switcher, plus Elementor core widgets).
 
 ## Where things go
 

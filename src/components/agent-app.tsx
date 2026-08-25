@@ -84,7 +84,7 @@ export function AgentApp() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Upload failed.");
       setStore(data);
-      setNotice("Done. Check Plugins and Elementor → Templates → Saved Templates.");
+      setNotice("Done. Check Plugins, Elementor templates, or download the generated JSON.");
       await loadRemote();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed.");
@@ -228,7 +228,7 @@ export function AgentApp() {
       {dragging ? (
         <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-background/80">
           <p className="rounded-2xl border border-dashed border-primary px-6 py-4 text-sm font-medium">
-            Drop plugin zip and/or Elementor JSON templates
+            Drop plugin zip and/or Elementor JSON templates, or a JPEG/PNG/PDF design
           </p>
         </div>
       ) : null}
@@ -341,12 +341,12 @@ export function AgentApp() {
           <section className="rounded-2xl border border-dashed border-primary/50 bg-primary/8 p-4">
             <p className="flex items-center gap-2 text-sm font-medium">
               <FolderUp className="size-4 text-primary" />
-              Drag plugin and templates here
+              Drag plugin, templates, or a design
             </p>
             <p className="mt-2 text-xs leading-5 text-muted-foreground">
-              Drop a plugin zip (or folder) and Elementor template JSON together. Plugins go to{" "}
-              <span className="text-foreground">Plugins</span>. Templates go to{" "}
-              <span className="text-foreground">Templates → Saved Templates</span>.
+              Drop a plugin zip, Elementor JSON, and/or a JPEG, PNG, or PDF of a page design. Designs
+              become Elementor JSON (images and icons are placeholders). Widgets are chosen from
+              plugins installed on the selected site.
             </p>
             <form
               action="/api/upload"
@@ -359,7 +359,7 @@ export function AgentApp() {
                 type="file"
                 name="files"
                 multiple
-                accept=".zip,.json,.php,application/zip,application/json"
+                accept=".zip,.json,.php,.jpg,.jpeg,.png,.webp,.pdf,application/zip,application/json,image/jpeg,image/png,application/pdf"
                 className="min-w-0 flex-1 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:text-sm file:font-medium file:text-primary-foreground"
               />
               <button

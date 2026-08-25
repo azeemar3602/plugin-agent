@@ -1,4 +1,5 @@
 import { pushPluginNow } from "./agent";
+import { buildDesignTemplate, isDesignFile } from "./design";
 import { fileBasename, looksLikeElementorTemplate } from "./elementor-detect";
 import { nid, nowIso } from "./ids";
 import {
@@ -10,7 +11,7 @@ import {
 import { mutateStore, readStore, toPublicStore } from "./store";
 import type { PublicStore } from "./types";
 import { saveUploadedTree } from "./upload-tree";
-import { importElementorFiles } from "./wordpress";
+import { importElementorFiles, listPlugins } from "./wordpress";
 
 type IncomingFile = {
   relativePath: string;
@@ -24,7 +25,6 @@ function basenameOf(file: IncomingFile): string {
 export async function filesFromForm(form: FormData): Promise<IncomingFile[]> {
   const many = form.getAll("files").filter((item): item is File => item instanceof File);
   const rels = form.getAll("relpaths").map(String);
-  const single = form.get("file");
   const extras = form.getAll("file").filter((item): item is File => item instanceof File);
 
   const out: IncomingFile[] = [];
@@ -43,26 +43,22 @@ export async function filesFromForm(form: FormData): Promise<IncomingFile[]> {
       buffer: Buffer.from(await file.arrayBuffer()),
     });
   }
-  if (out.length === 0 && single instanceof File) {
-    out.push({
-      relativePath: single.name,
-      buffer: Buffer.from(await single.arrayBuffer()),
-    });
-  }
   return out;
 }
 
 export async function ingestUpload(files: IncomingFile[]): Promise<PublicStore> {
   if (files.length === 0) {
-    throw new Error("Drop a plugin zip/folder and/or Elementor template JSON.");
+    throw new Error("Drop a plugin zip, Elementor JSON, or a JPEG/PNG/PDF design.");
   }
 
   const templates: Array<{ filename: string; buffer: Buffer }> = [];
+  const designs: IncomingFile[] = [];
   const rest: IncomingFile[] = [];
 
   for (const file of files) {
     const name = basenameOf(file);
-    if (/\.json$/i.test(name) && looksLikeElementorTemplate(file.buffer.toString("utf8"))) {
+    if (isDesignFile(name)) designs.push(file);
+    else if (/\.json$/i.test(name) && looksLikeElementorTemplate(file.buffer.toString("utf8"))) {
       templates.push({ filename: name, buffer: file.buffer });
     } else {
       rest.push(file);
@@ -87,20 +83,21 @@ export async function ingestUpload(files: IncomingFile[]): Promise<PublicStore> 
       await inspectPlugin(tree);
       pluginDir = tree;
     } catch (error) {
-      if (templates.length === 0) throw error;
+      if (templates.length === 0 && designs.length === 0) throw error;
     }
   }
 
-  if (!pluginDir && templates.length === 0) {
+  if (!pluginDir && templates.length === 0 && designs.length === 0) {
     throw new Error(
-      "That did not look like a WordPress plugin or an Elementor template. Drop a plugin zip (with a Plugin Name PHP file) or an Elementor .json export.",
+      "Drop a plugin zip, an Elementor JSON, or a JPEG/PNG/PDF of the design.",
     );
   }
 
   await mutateStore((current) => {
     const bits = [
       pluginDir ? "plugin files" : "",
-      templates.length ? `${templates.length} Elementor template file${templates.length === 1 ? "" : "s"}` : "",
+      templates.length ? `${templates.length} Elementor JSON` : "",
+      designs.length ? `${designs.length} design file${designs.length === 1 ? "" : "s"}` : "",
     ].filter(Boolean);
     current.messages.push({
       id: nid(),
@@ -142,60 +139,12 @@ export async function ingestUpload(files: IncomingFile[]): Promise<PublicStore> 
     });
   }
 
+  if (designs.length > 0) {
+    await processDesigns(designs);
+  }
+
   if (templates.length > 0) {
-    const snapshot = await readStore();
-    const site =
-      snapshot.sites.find((item) => item.id === snapshot.lastSiteId) ?? snapshot.sites[0];
-    try {
-      if (!site?.url || !site.username || !site.password) {
-        throw new Error("Need the WordPress site URL, username, and application password first.");
-      }
-      const imported = await importElementorFiles({ site, files: templates });
-      await mutateStore((current) => {
-        const titles = imported.imported.map((item) => item.title).filter(Boolean);
-        current.jobs.push({
-          id: nid(),
-          action: "template",
-          siteId: site.id,
-          pluginId: current.lastPluginId || "templates",
-          pluginName: titles[0] || "Elementor templates",
-          pluginVersion: "",
-          siteUrl: site.url,
-          status: "success",
-          message: imported.message || `Imported ${imported.imported.length} template(s).`,
-          files: templates.map((file) => file.filename),
-          createdAt: nowIso(),
-        });
-        current.messages.push({
-          id: nid(),
-          role: "agent",
-          text:
-            imported.message ||
-            `Imported **${imported.imported.length}** Elementor template${imported.imported.length === 1 ? "" : "s"} into Templates → Saved Templates.`,
-          createdAt: nowIso(),
-          card: {
-            kind: "templates",
-            imported: imported.imported.map((item) => ({
-              title: item.title,
-              type: item.type,
-            })),
-            errors: imported.errors,
-          },
-        });
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Could not import Elementor templates.";
-      await mutateStore((current) => {
-        current.messages.push({
-          id: nid(),
-          role: "agent",
-          text: message,
-          createdAt: nowIso(),
-          card: { kind: "templates", imported: [], errors: [message] },
-        });
-      });
-      if (!pluginDir) throw error;
-    }
+    await importTemplateFiles(templates, Boolean(pluginDir) || designs.length > 0);
   }
 
   if (pluginDir) {
@@ -205,4 +154,126 @@ export async function ingestUpload(files: IncomingFile[]): Promise<PublicStore> 
 
   const store = await readStore();
   return toPublicStore(store);
+}
+
+async function processDesigns(designs: IncomingFile[]) {
+  const snapshot = await readStore();
+  const site =
+    snapshot.sites.find((item) => item.id === snapshot.lastSiteId) ?? snapshot.sites[0];
+  const plugins = site ? await listPlugins(site) : [];
+
+  for (const design of designs) {
+    const built = await buildDesignTemplate({
+      filename: basenameOf(design),
+      buffer: design.buffer,
+      plugins,
+    });
+
+    let imported = false;
+    let importError: string | undefined;
+    if (site?.url && site.username && site.password) {
+      try {
+        await importElementorFiles({
+          site,
+          files: [{ filename: `${built.id}.json`, buffer: Buffer.from(built.json) }],
+        });
+        imported = true;
+      } catch (error) {
+        importError = error instanceof Error ? error.message : "Could not import the generated JSON.";
+      }
+    }
+
+    await mutateStore((current) => {
+      current.jobs.push({
+        id: nid(),
+        action: "template",
+        siteId: site?.id,
+        pluginId: built.id,
+        pluginName: built.title,
+        pluginVersion: "",
+        siteUrl: site?.url,
+        status: imported ? "success" : "error",
+        message: imported
+          ? `Built Elementor JSON from the design and imported it (${built.widgetsUsed.join(", ")}).`
+          : importError || "Built Elementor JSON from the design.",
+        files: [basenameOf(design)],
+        createdAt: nowIso(),
+      });
+      current.messages.push({
+        id: nid(),
+        role: "agent",
+        text: imported
+          ? `Built **${built.title}** from the design using widgets from the plugins on this site (${built.widgetsUsed.join(", ")}). Images and icons are placeholders. Imported into Templates → Saved Templates.`
+          : `Built **${built.title}** from the design (${built.sectionRoles.join(" → ")}). Widgets used: ${built.widgetsUsed.join(", ") || "heading/text/button"}. Images and icons are placeholders.${importError ? ` Import skipped: ${importError}` : " Download the JSON and import it in Elementor."}`,
+        createdAt: nowIso(),
+        card: {
+          kind: "design",
+          designId: built.id,
+          title: built.title,
+          widgetsUsed: built.widgetsUsed,
+          sectionRoles: built.sectionRoles,
+          imported,
+        },
+      });
+    });
+  }
+}
+
+async function importTemplateFiles(
+  templates: Array<{ filename: string; buffer: Buffer }>,
+  allowPartial: boolean,
+) {
+  const snapshot = await readStore();
+  const site =
+    snapshot.sites.find((item) => item.id === snapshot.lastSiteId) ?? snapshot.sites[0];
+  try {
+    if (!site?.url || !site.username || !site.password) {
+      throw new Error("Need the WordPress site URL, username, and application password first.");
+    }
+    const imported = await importElementorFiles({ site, files: templates });
+    await mutateStore((current) => {
+      const titles = imported.imported.map((item) => item.title).filter(Boolean);
+      current.jobs.push({
+        id: nid(),
+        action: "template",
+        siteId: site.id,
+        pluginId: current.lastPluginId || "templates",
+        pluginName: titles[0] || "Elementor templates",
+        pluginVersion: "",
+        siteUrl: site.url,
+        status: "success",
+        message: imported.message || `Imported ${imported.imported.length} template(s).`,
+        files: templates.map((file) => file.filename),
+        createdAt: nowIso(),
+      });
+      current.messages.push({
+        id: nid(),
+        role: "agent",
+        text:
+          imported.message ||
+          `Imported **${imported.imported.length}** Elementor template${imported.imported.length === 1 ? "" : "s"} into Templates → Saved Templates.`,
+        createdAt: nowIso(),
+        card: {
+          kind: "templates",
+          imported: imported.imported.map((item) => ({
+            title: item.title,
+            type: item.type,
+          })),
+          errors: imported.errors,
+        },
+      });
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not import Elementor templates.";
+    await mutateStore((current) => {
+      current.messages.push({
+        id: nid(),
+        role: "agent",
+        text: message,
+        createdAt: nowIso(),
+        card: { kind: "templates", imported: [], errors: [message] },
+      });
+    });
+    if (!allowPartial) throw error;
+  }
 }
