@@ -4,9 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { LoaderCircle, RefreshCw, SendHorizontal } from "lucide-react";
 
 import { AgentText, MessageCard, PressMark, ToolSteps } from "@/components/message-cards";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Textarea } from "@/components/ui/textarea";
+import { buttonVariants } from "@/components/ui/button";
 import type { PublicStore } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -22,8 +20,8 @@ export function AgentApp() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [draft, setDraft] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -54,7 +52,7 @@ export function AgentApp() {
   async function sendMessage(text: string) {
     const message = text.trim();
     if (!message || sending) return;
-    setDraft("");
+    if (inputRef.current) inputRef.current.value = "";
     setSending(true);
     setError(null);
     setStore((current) => ({
@@ -83,12 +81,13 @@ export function AgentApp() {
       setError(err instanceof Error ? err.message : "Send failed.");
     } finally {
       setSending(false);
+      inputRef.current?.focus();
     }
   }
 
   return (
-    <div className="flex min-h-full flex-1 flex-col">
-      <header className="flex items-center gap-3 border-b border-border/70 px-4 py-3 sm:px-6">
+    <div className="flex h-dvh min-h-0 flex-col overflow-hidden">
+      <header className="flex shrink-0 items-center gap-3 border-b border-border/70 px-4 py-3 sm:px-6">
         <PressMark className="text-primary size-8 shrink-0" />
         <div className="min-w-0 flex-1">
           <p className="font-heading text-lg leading-none tracking-tight">Plugin Agent</p>
@@ -98,15 +97,15 @@ export function AgentApp() {
               : "I'll ask for username, app password, then the plugin folder"}
           </p>
         </div>
-        <Button
-          size="sm"
-          variant="outline"
+        <button
+          type="button"
           disabled={sending || !plugin}
           onClick={() => void sendMessage("do update")}
+          className={cn(buttonVariants({ size: "sm", variant: "outline" }))}
         >
           {sending ? <LoaderCircle className="animate-spin" /> : <RefreshCw />}
           Do update
-        </Button>
+        </button>
       </header>
 
       {error ? (
@@ -115,7 +114,7 @@ export function AgentApp() {
         </div>
       ) : null}
 
-      <ScrollArea className="min-h-0 flex-1">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-8">
           {loading ? (
             <p className="text-sm text-muted-foreground">Starting agent…</p>
@@ -147,36 +146,42 @@ export function AgentApp() {
           ) : null}
           <div ref={bottomRef} />
         </div>
-      </ScrollArea>
+      </div>
 
-      <div className="border-t border-border/70 px-4 py-4">
+      <div className="shrink-0 border-t border-border/70 bg-background/95 px-4 py-4">
         <div className="mx-auto flex max-w-2xl flex-wrap gap-2 pb-3">
           <Chip label="Connect WordPress" onClick={() => sendMessage("connect wordpress")} />
           <Chip label="Do update" onClick={() => sendMessage("do update")} />
           <Chip label="How you work" onClick={() => sendMessage("help")} />
         </div>
         <form
-          className="mx-auto flex max-w-2xl items-end gap-2"
+          className="mx-auto flex max-w-2xl items-center gap-2"
           onSubmit={(event) => {
             event.preventDefault();
-            void sendMessage(draft);
+            const form = event.currentTarget;
+            const field = form.elements.namedItem("message");
+            const value = field instanceof HTMLInputElement ? field.value : "";
+            void sendMessage(value);
           }}
         >
-          <Textarea
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            placeholder="https://yoursite.com  or  do update"
-            className="min-h-12 max-h-36 flex-1 resize-none"
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && !event.shiftKey) {
-                event.preventDefault();
-                void sendMessage(draft);
-              }
-            }}
+          <input
+            ref={inputRef}
+            name="message"
+            type="text"
+            autoComplete="off"
+            autoFocus
+            disabled={sending}
+            placeholder="Type here, then press Enter or Send"
+            className="h-11 min-w-0 flex-1 rounded-xl border border-input bg-input/30 px-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
           />
-          <Button type="submit" size="icon-lg" disabled={sending || !draft.trim()}>
-            <SendHorizontal />
-          </Button>
+          <button
+            type="submit"
+            disabled={sending}
+            className={cn(buttonVariants({ size: "lg" }), "h-11 px-4")}
+          >
+            {sending ? <LoaderCircle className="animate-spin" /> : <SendHorizontal />}
+            Send
+          </button>
         </form>
       </div>
     </div>
