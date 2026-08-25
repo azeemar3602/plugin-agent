@@ -1,10 +1,12 @@
 import { mkdir, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { dataDir } from "./paths";
+
 export async function saveUploadedTree(
   files: Array<{ relativePath: string; buffer: Buffer }>,
 ): Promise<string> {
-  const dest = path.join(process.cwd(), "data", "uploads", String(Date.now()));
+  const dest = path.join(dataDir(), "uploads", String(Date.now()));
   await mkdir(dest, { recursive: true });
   for (const file of files) {
     const rel = file.relativePath.replace(/\\/g, "/");

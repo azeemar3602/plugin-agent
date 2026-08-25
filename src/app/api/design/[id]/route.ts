@@ -1,6 +1,8 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import { dataDir } from "@/lib/paths";
+
 export const dynamic = "force-dynamic";
 
 export async function GET(
@@ -11,7 +13,7 @@ export async function GET(
   if (!/^[\w.-]+$/.test(id)) {
     return Response.json({ error: "Invalid design id." }, { status: 400 });
   }
-  const jsonPath = path.join(process.cwd(), "data", "designs", id, "template.json");
+  const jsonPath = path.join(dataDir(), "designs", id, "template.json");
   try {
     const json = await readFile(jsonPath, "utf8");
     return new Response(json, {

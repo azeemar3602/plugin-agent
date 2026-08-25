@@ -3,8 +3,10 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 
+import { analyzeDesignBuffer } from "./analyze-image";
 import { buildElementorDocument, type DesignAnalysis } from "./elementor-builder";
 import { activePluginKeys, availableWidgets } from "./elementor-widgets";
+import { appRoot, dataDir } from "./paths";
 import type { RemotePlugin } from "./wordpress";
 
 const execFile = promisify(execFileCb);
@@ -27,16 +29,26 @@ export function isDesignFile(filename: string): boolean {
   return isDesignName(filename);
 }
 
-export async function analyzeDesignFile(filePath: string): Promise<DesignAnalysis> {
-  const script = path.join(process.cwd(), "scripts", "analyze_design.py");
-  const { stdout, stderr } = await execFile("python3", [script, filePath], {
-    timeout: 30000,
-    maxBuffer: 8 * 1024 * 1024,
-  });
-  if (!stdout.trim()) {
-    throw new Error(stderr.trim() || "Could not read that JPEG, PNG, or PDF.");
+export async function analyzeDesignFile(filePath: string, buffer: Buffer): Promise<DesignAnalysis> {
+  const name = path.basename(filePath);
+  if (/\.(jpe?g|png)$/i.test(name)) {
+    return analyzeDesignBuffer(buffer, name);
   }
-  return JSON.parse(stdout) as DesignAnalysis;
+  const script = path.join(appRoot(), "scripts", "analyze_design.py");
+  try {
+    const { stdout, stderr } = await execFile("python3", [script, filePath], {
+      timeout: 30000,
+      maxBuffer: 8 * 1024 * 1024,
+    });
+    if (!stdout.trim()) {
+      throw new Error(stderr.trim() || "Could not read that PDF.");
+    }
+    return JSON.parse(stdout) as DesignAnalysis;
+  } catch {
+    throw new Error(
+      "PDF analysis needs Python on this machine. Export the first page as a JPEG or PNG and drop that instead.",
+    );
+  }
 }
 
 export async function buildDesignTemplate(options: {
@@ -45,13 +57,13 @@ export async function buildDesignTemplate(options: {
   plugins: RemotePlugin[];
 }): Promise<DesignBuild> {
   const id = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
-  const dir = path.join(process.cwd(), "data", "designs", id);
+  const dir = path.join(dataDir(), "designs", id);
   await mkdir(dir, { recursive: true });
   const sourceName = options.filename.replace(/[^\w.-]+/g, "-") || "design";
   const sourcePath = path.join(dir, sourceName);
   await writeFile(sourcePath, options.buffer);
 
-  const analysis = await analyzeDesignFile(sourcePath);
+  const analysis = await analyzeDesignFile(sourcePath, options.buffer);
   const widgets = availableWidgets(options.plugins);
   const keys = activePluginKeys(options.plugins);
   const title = `Design: ${sourceName.replace(/\.[^.]+$/, "")}`;

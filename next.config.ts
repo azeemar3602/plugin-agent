@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["archiver"],
+  output: "standalone",
+  serverExternalPackages: ["archiver", "jpeg-js", "jszip", "pngjs"],
   allowedDevOrigins: [
     "127.0.0.1",
     "localhost",

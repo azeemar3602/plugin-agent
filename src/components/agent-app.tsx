@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { FolderUp, LoaderCircle, RefreshCw, SendHorizontal } from "lucide-react";
+import { Download, FolderUp, LoaderCircle, RefreshCw, SendHorizontal } from "lucide-react";
 
 import { AgentText, MessageCard, PressMark, ToolSteps } from "@/components/message-cards";
 import { buttonVariants } from "@/components/ui/button";
@@ -39,6 +39,7 @@ export function AgentApp() {
   const [remotePlugins, setRemotePlugins] = useState<RemotePlugin[]>([]);
   const [remoteTemplates, setRemoteTemplates] = useState<RemoteTemplate[]>([]);
   const [probe, setProbe] = useState<ProbeResult | null>(null);
+  const [windowsInstaller, setWindowsInstaller] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const busy = useRef(false);
@@ -104,6 +105,10 @@ export function AgentApp() {
     if (ok) setNotice("Upload reached the agent. Check Plugins and Elementor templates below.");
     if (formError) setError(formError);
     if (ok || formError) window.history.replaceState({}, "", "/");
+
+    fetch("/api/installer", { method: "HEAD" })
+      .then((response) => setWindowsInstaller(response.ok))
+      .catch(() => setWindowsInstaller(false));
 
     let cancelled = false;
     (async () => {
@@ -267,6 +272,16 @@ export function AgentApp() {
             </p>
           )}
         </div>
+        {windowsInstaller ? (
+          <a
+            href="/api/installer"
+            className={cn(buttonVariants({ size: "sm", variant: "ghost" }))}
+          >
+            <Download />
+            <span className="hidden sm:inline">Windows installer</span>
+            <span className="sm:hidden">EXE</span>
+          </a>
+        ) : null}
         <button
           type="button"
           disabled={sending || !plugin}

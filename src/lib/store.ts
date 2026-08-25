@@ -2,10 +2,13 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { nid, nowIso } from "./ids";
+import { dataDir } from "./paths";
 import type { PublicPending, PublicSite, PublicStore, Site, Store } from "./types";
 
-const DATA_DIR = path.join(process.cwd(), "data");
-const STORE_PATH = path.join(DATA_DIR, "store.json");
+function storePath(): string {
+  return path.join(dataDir(), "store.json");
+}
+
 export const STORE_VERSION = 3;
 
 export const WELCOME_TEXT = `I'm your WordPress plugin and Elementor template agent. I'll ask for:
@@ -34,7 +37,7 @@ const WELCOME: Store = {
 
 export async function readStore(): Promise<Store> {
   try {
-    const raw = await readFile(STORE_PATH, "utf8");
+    const raw = await readFile(storePath(), "utf8");
     const parsed = JSON.parse(raw) as {
       version?: number;
       sites?: Array<{
@@ -94,8 +97,9 @@ export async function readStore(): Promise<Store> {
 }
 
 export async function writeStore(store: Store): Promise<void> {
-  await mkdir(DATA_DIR, { recursive: true });
-  const tmp = `${STORE_PATH}.tmp`;
+  const file = storePath();
+  await mkdir(path.dirname(file), { recursive: true });
+  const tmp = `${file}.tmp`;
   const trimmed: Store = {
     ...store,
     version: STORE_VERSION,
@@ -103,7 +107,7 @@ export async function writeStore(store: Store): Promise<void> {
     messages: store.messages.slice(-80),
   };
   await writeFile(tmp, JSON.stringify(trimmed, null, 2));
-  await rename(tmp, STORE_PATH);
+  await rename(tmp, file);
 }
 
 export function toPublicSite(site: Site): PublicSite {

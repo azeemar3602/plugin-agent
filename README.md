@@ -12,6 +12,19 @@ npm run dev
 
 Open [http://127.0.0.1:43177](http://127.0.0.1:43177). Not `http://0.0.0.0`.
 
+## Windows installer (any laptop)
+
+Build a setup EXE that does **not** need Node.js:
+
+```bash
+npm install
+npm run desktop:win
+```
+
+That writes `release/PluginAgentSetup.exe`. Copy that file to a Windows PC, double-click it, and open **Plugin Agent** from the Start menu or desktop shortcut. Site passwords stay on that PC under `%APPDATA%\plugin-agent\data`.
+
+If Windows SmartScreen appears, choose **More info → Run anyway**. The portable folder `release/PluginAgent-win32-x64` also works: unzip and run `PluginAgent.exe`.
+
 ## What it needs
 
 1. Site URL (`https://yoursite.com`)

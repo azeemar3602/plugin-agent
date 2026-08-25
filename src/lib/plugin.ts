@@ -1,12 +1,11 @@
-import { execFile as execFileCb } from "node:child_process";
-import { mkdir, readdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { PassThrough } from "node:stream";
-import { promisify } from "node:util";
 import { ZipArchive, type EntryData } from "archiver";
+import JSZip from "jszip";
 
-const execFile = promisify(execFileCb);
+import { appRoot, dataDir } from "./paths";
 
 export type PluginHeader = {
   name: string;
@@ -47,7 +46,7 @@ export function resolvePluginPath(input: string): string {
     value = path.join(os.homedir(), value.slice(1));
   }
   if (!path.isAbsolute(value)) {
-    value = path.resolve(process.cwd(), value);
+    value = path.resolve(appRoot(), value);
   }
   return path.normalize(value);
 }
@@ -181,38 +180,24 @@ export async function zipPlugin(absDir: string, slug: string): Promise<Buffer> {
   });
 }
 
-const UNZIP_PY = `
-import zipfile, sys, os
-src, dest = sys.argv[1], sys.argv[2]
-dest = os.path.abspath(dest)
-os.makedirs(dest, exist_ok=True)
-with zipfile.ZipFile(src) as z:
-    for info in z.infolist():
-        name = info.filename.replace("\\\\", "/")
-        if not name or name.endswith("/"):
-            continue
-        parts = [p for p in name.split("/") if p and p != "."]
-        if any(p == ".." for p in parts):
-            continue
-        target = os.path.abspath(os.path.join(dest, *parts))
-        if not target.startswith(dest + os.sep):
-            continue
-        os.makedirs(os.path.dirname(target), exist_ok=True)
-        with z.open(info) as srcf, open(target, "wb") as out:
-            out.write(srcf.read())
-`;
-
 export async function extractUploadedZip(buffer: Buffer): Promise<string> {
-  const root = path.join(process.cwd(), "data", "uploads");
+  const root = path.join(dataDir(), "uploads");
   await mkdir(root, { recursive: true });
-  const stamp = Date.now().toString();
-  const zipPath = path.join(root, `${stamp}.zip`);
-  const dest = path.join(root, stamp);
-  await writeFile(zipPath, buffer);
-  try {
-    await execFile("python3", ["-c", UNZIP_PY, zipPath, dest]);
-  } finally {
-    await unlink(zipPath).catch(() => undefined);
+  const dest = path.join(root, Date.now().toString());
+  await mkdir(dest, { recursive: true });
+  const destAbs = path.resolve(dest);
+  const zip = await JSZip.loadAsync(buffer);
+  for (const [name, entry] of Object.entries(zip.files)) {
+    if (!entry || entry.dir) continue;
+    const parts = name
+      .replace(/\\/g, "/")
+      .split("/")
+      .filter((part) => part && part !== "." && part !== "..");
+    if (parts.length === 0) continue;
+    const target = path.resolve(dest, ...parts);
+    if (target !== destAbs && !target.startsWith(destAbs + path.sep)) continue;
+    await mkdir(path.dirname(target), { recursive: true });
+    await writeFile(target, await entry.async("nodebuffer"));
   }
 
   const entries = await readdir(dest, { withFileTypes: true });
@@ -226,7 +211,7 @@ export async function extractUploadedZip(buffer: Buffer): Promise<string> {
 
 export async function saveUploadedPhp(buffer: Buffer, filename: string): Promise<string> {
   const slug = path.basename(filename, ".php").replace(/[^\w-]+/g, "-") || "uploaded-plugin";
-  const dest = path.join(process.cwd(), "data", "uploads", `${Date.now()}-${slug}`);
+  const dest = path.join(dataDir(), "uploads", `${Date.now()}-${slug}`);
   await mkdir(dest, { recursive: true });
   await writeFile(path.join(dest, `${slug}.php`), buffer);
   return dest;
