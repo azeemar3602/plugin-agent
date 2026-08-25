@@ -20,9 +20,39 @@ function isBrowserNavigation(request: Request): boolean {
   return accept.includes("text/html") && !accept.includes("application/json");
 }
 
+function homeUrl(request: Request): URL {
+  const referer = request.headers.get("referer");
+  if (referer) {
+    try {
+      const ref = new URL(referer);
+      if (ref.hostname && ref.hostname !== "0.0.0.0") {
+        ref.pathname = "/";
+        ref.search = "";
+        ref.hash = "";
+        return ref;
+      }
+    } catch {
+      /* fall through */
+    }
+  }
+
+  const rawHost = (
+    request.headers.get("x-forwarded-host") ||
+    request.headers.get("host") ||
+    "127.0.0.1:43177"
+  )
+    .split(",")[0]
+    .trim()
+    .replace(/^0\.0\.0\.0(?::|$)/, "127.0.0.1");
+  const proto =
+    request.headers.get("x-forwarded-proto") ||
+    (rawHost.startsWith("127.") || rawHost.startsWith("localhost") ? "http" : "https");
+  return new URL(`${proto}://${rawHost}/`);
+}
+
 function reply(request: Request, body: unknown, error?: string) {
   if (isBrowserNavigation(request)) {
-    const url = new URL("/", request.url);
+    const url = homeUrl(request);
     if (error) url.searchParams.set("error", error.slice(0, 280));
     else url.searchParams.set("ok", "1");
     return Response.redirect(url, 303);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { FolderUp, LoaderCircle, RefreshCw, SendHorizontal } from "lucide-react";
 
 import { AgentText, MessageCard, PressMark, ToolSteps } from "@/components/message-cards";
@@ -87,6 +87,35 @@ export function AgentApp() {
 
   const site = store.sites.find((item) => item.id === store.lastSiteId) ?? store.sites[0];
   const plugin = pickLivePlugin(store);
+
+  async function submitUpload(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy.current) return;
+    const form = event.currentTarget;
+    const body = new FormData(form);
+    if (![...body.keys()].length) return;
+    busy.current = true;
+    setSending(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        headers: { Accept: "application/json" },
+        body,
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Upload failed.");
+      setStore(data);
+      setNotice("Installed. Refresh WP Admin → Plugins if it is not listed yet.");
+      await loadRemote();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed.");
+    } finally {
+      busy.current = false;
+      setSending(false);
+    }
+  }
 
   async function sendMessage(text: string) {
     const message = text.trim();
@@ -200,6 +229,7 @@ export function AgentApp() {
               action="/api/upload"
               method="post"
               encType="multipart/form-data"
+              onSubmit={(event) => void submitUpload(event)}
               className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center"
             >
               <input
@@ -209,7 +239,11 @@ export function AgentApp() {
                 accept=".zip,application/zip"
                 className="min-w-0 flex-1 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:text-sm file:font-medium file:text-primary-foreground"
               />
-              <button type="submit" className={cn(buttonVariants({ size: "lg" }), "h-11 px-4")}>
+              <button
+                type="submit"
+                disabled={sending}
+                className={cn(buttonVariants({ size: "lg" }), "h-11 px-4")}
+              >
                 Install on WordPress
               </button>
             </form>
@@ -217,6 +251,7 @@ export function AgentApp() {
               action="/api/upload"
               method="post"
               encType="multipart/form-data"
+              onSubmit={(event) => void submitUpload(event)}
               className="mt-4 border-t border-border/60 pt-4"
             >
               <p className="text-xs text-muted-foreground">Or pick the plugin folder itself:</p>
@@ -229,6 +264,7 @@ export function AgentApp() {
                 />
                 <button
                   type="submit"
+                  disabled={sending}
                   className={cn(buttonVariants({ size: "lg", variant: "outline" }), "h-11 px-4")}
                 >
                   Install folder
