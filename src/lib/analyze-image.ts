@@ -12,7 +12,7 @@ function decodeRaster(buffer: Buffer, filename: string): Raster {
     return { width: png.width, height: png.height, data: png.data };
   }
   if (name.endsWith(".jpg") || name.endsWith(".jpeg")) {
-    return decodeJpeg(buffer, { maxMemoryUsageInMB: 256 });
+    return decodeJpeg(buffer, { maxMemoryUsageInMB: 1024, maxResolutionInMP: 200 });
   }
   throw new Error(
     "Drop a JPEG or PNG of the design. For a PDF, export the first page as PNG and drop that.",
