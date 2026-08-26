@@ -350,11 +350,13 @@ export function buildElementorDocument(options: {
   analysis: DesignAnalysis;
   widgets: CatalogWidget[];
   extras: LayoutExtras;
+  filename?: string;
 }): { json: string; widgetsUsed: string[]; sectionRoles: string[]; repairs: { from: string; to: string; reason: string }[] } {
   const plan = planPageLayout({
     analysis: options.analysis,
     widgets: options.widgets,
     extras: options.extras,
+    filename: options.filename,
   });
   const content = plan.map((section) => outerContainer(section));
   const document = {

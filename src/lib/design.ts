@@ -5,12 +5,11 @@ import { promisify } from "node:util";
 
 import { analyzeDesignBuffer } from "./analyze-image";
 import { buildElementorDocument, type DesignAnalysis } from "./elementor-builder";
-import { landingPageTitle, looksLikeLanding } from "./layout-plan";
+import { pageTitle } from "./layout-plan";
 import {
   activePluginKeys,
   availableWidgets,
   mergeRemoteWidgets,
-  titleFromDetectedWidgets,
   type WidgetRole,
 } from "./elementor-widgets";
 import { appRoot, dataDir } from "./paths";
@@ -79,9 +78,7 @@ export async function buildDesignTemplate(options: {
   const analysis = options.analysis ?? (await analyzeDesignFile(sourcePath, options.buffer));
   const widgets = mergeRemoteWidgets(availableWidgets(options.plugins), options.remoteWidgets ?? []);
   const keys = activePluginKeys(options.plugins);
-  const title = looksLikeLanding(analysis)
-    ? landingPageTitle()
-    : titleFromDetectedWidgets(widgets) || `Design: ${sourceName.replace(/\.[^.]+$/, "")}`;
+  const title = pageTitle(analysis, widgets, options.filename);
   const built = buildElementorDocument({
     title,
     analysis,
@@ -92,6 +89,7 @@ export async function buildDesignTemplate(options: {
       form: keys.has("formlayer") || keys.has("formlayer-pro") || keys.has("elementor-pro"),
       language: keys.has("polylang"),
     },
+    filename: options.filename,
   });
 
   const jsonPath = path.join(dir, "template.json");

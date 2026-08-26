@@ -191,6 +191,7 @@ async function processDesigns(designs: IncomingFile[]) {
       plugins,
       remoteWidgets,
       analysis,
+      filename: sourceName,
     });
     plugins = ensured.plugins;
     remoteWidgets = ensured.remoteWidgets;

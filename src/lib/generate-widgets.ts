@@ -10,7 +10,7 @@ import {
   type WidgetControl,
   type WidgetRole,
 } from "./elementor-widgets";
-import { looksLikeLanding } from "./layout-plan";
+import { classifyPageKind } from "./layout-plan";
 import { dataDir } from "./paths";
 import { zipPlugin } from "./plugin";
 import type { Site } from "./types";
@@ -52,8 +52,10 @@ export async function ensureGeneratedWidgets(options: {
   plugins: RemotePlugin[];
   remoteWidgets: RemoteElementorWidget[];
   analysis: DesignAnalysis;
+  filename?: string;
 }): Promise<GeneratedWidgetsResult> {
-  if (looksLikeLanding(options.analysis)) {
+  const merged = mergeRemoteWidgets(availableWidgets(options.plugins), options.remoteWidgets);
+  if (classifyPageKind(options.analysis, merged, options.filename) === "landing") {
     return {
       plugins: options.plugins,
       remoteWidgets: options.remoteWidgets,
@@ -61,7 +63,6 @@ export async function ensureGeneratedWidgets(options: {
       installed: false,
     };
   }
-  const merged = mergeRemoteWidgets(availableWidgets(options.plugins), options.remoteWidgets);
   const needed = neededRolesFromAnalysis(options.analysis.sections);
   const missing = missingLayoutRoles(merged, needed);
   if (missing.length === 0) {

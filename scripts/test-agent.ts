@@ -45,11 +45,10 @@ function storeWithSite(extra: Partial<Store> = {}): Store {
 }
 
 async function main() {
-  const done = await runAgent(storeWithSite({ pending: undefined }), "Hi new page is done");
-  assert.match(done[0].text, /Never Miss Another Client Call/);
-  assert.match(done[0].text, /never-miss-another-client-call/);
-  assert.doesNotMatch(done[0].text, /What's the WordPress site URL/);
-  assert.doesNotMatch(done[0].text, /Drop a plugin zip or Elementor JSON to install/);
+  const urlAsk = await runAgent(storeWithSite({ pending: undefined }), "send me url of this page");
+  assert.match(urlAsk[0].text, /Never Miss Another Client Call/);
+  assert.match(urlAsk[0].text, /never-miss-another-client-call/);
+  assert.doesNotMatch(urlAsk[0].text, /how-can-vets-reduce-no-shows/);
 
   const greeting = await runAgent(storeWithSite({ pending: undefined }), "hello");
   assert.match(greeting[0].text, /wp\.azbuilds\.xyz/);

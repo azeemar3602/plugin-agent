@@ -4,6 +4,7 @@ import {
   pickWidget,
   planPageFromDetectedWidgets,
   settingsFromWidget,
+  titleFromDetectedWidgets,
 } from "./elementor-widgets";
 import { FA, ICON_IMGS, type ElementorIcon } from "./icons";
 
@@ -165,23 +166,148 @@ export function layoutSummary(plan: PlannedSection[]): string[] {
   });
 }
 
-export function looksLikeLanding(analysis: DesignAnalysis): boolean {
-  return analysis.sections.some((section) => section.role === "features" || section.columns >= 3);
+export type PageKind = "landing" | "article" | "primitive";
+
+function normalizedFilename(filename?: string): string {
+  return (filename ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+}
+
+export function looksLikeLandingFilename(filename?: string): boolean {
+  const name = normalizedFilename(filename);
+  return /home-?page|homepage|landing-page|(?:^|-)landing(?:-|$)|never-miss|client-call|(?:^|-)index(?:-|$)/.test(
+    name,
+  );
+}
+
+export function looksLikeArticleFilename(filename?: string): boolean {
+  const name = normalizedFilename(filename);
+  return /no-shows?|article|blog-post|vets-reduce|clinic-effectively/.test(name);
+}
+
+function sectionShare(sections: DesignSection[], match: (section: DesignSection) => boolean): number {
+  return sections.reduce((sum, section) => (match(section) ? sum + Math.max(0, section.y1 - section.y0) : sum), 0);
+}
+
+function contentShare(analysis: DesignAnalysis): number {
+  return sectionShare(
+    analysis.sections,
+    (section) => section.role === "content" && section.columns <= 1 && !section.imageHeavy,
+  );
+}
+
+function splitCount(analysis: DesignAnalysis): number {
+  return analysis.sections.filter(
+    (section) =>
+      section.role === "split" || (section.columns === 2 && section.role !== "hero" && section.role !== "header"),
+  ).length;
+}
+
+function ctaCount(analysis: DesignAnalysis): number {
+  return analysis.sections.filter((section) => section.role === "cta").length;
+}
+
+function hasFeatureGrid(analysis: DesignAnalysis): boolean {
+  return analysis.sections.some((section, index) => {
+    if (section.role === "features") return true;
+    const nearEnd = index >= Math.max(0, analysis.sections.length - 2);
+    if (section.columns >= 4 && nearEnd) return false;
+    return section.columns >= 3;
+  });
+}
+
+function hasRelatedGrid(analysis: DesignAnalysis): boolean {
+  const total = analysis.sections.length;
+  return analysis.sections.some(
+    (section, index) => section.columns >= 4 && index > 0 && index >= Math.max(0, total - 3),
+  );
+}
+
+function landingScore(analysis: DesignAnalysis, filename?: string): number {
+  let score = 0;
+  if (looksLikeLandingFilename(filename)) score += 8;
+  if (hasFeatureGrid(analysis)) score += 5;
+  score += Math.min(6, splitCount(analysis) * 2);
+  score += Math.min(6, ctaCount(analysis) * 2);
+  if (analysis.sections.length >= 5) score += 3;
+  if (analysis.width > 0 && analysis.height / analysis.width > 2.4) score += 3;
+  if (sectionShare(analysis.sections, (section) => section.imageHeavy) > 0.12) score += 2;
+  if (contentShare(analysis) > 0.22) score -= 4;
+  return score;
+}
+
+function articleScore(analysis: DesignAnalysis, filename?: string): number {
+  let score = 0;
+  if (looksLikeArticleFilename(filename)) score += 8;
+  if (looksLikeLandingFilename(filename)) score -= 8;
+  const share = contentShare(analysis);
+  if (share >= 0.18) score += 5;
+  if (share >= 0.28) score += 3;
+  if (hasRelatedGrid(analysis)) score += 4;
+  if (hasFeatureGrid(analysis)) score -= 3;
+  if (splitCount(analysis) >= 2) score -= 3;
+  if (ctaCount(analysis) >= 2) score -= 2;
+  if (analysis.sections.length >= 7) score -= 3;
+  return score;
+}
+
+export function looksLikeLanding(analysis: DesignAnalysis, filename?: string): boolean {
+  if (looksLikeLandingFilename(filename) && !looksLikeArticleFilename(filename)) return true;
+  if (looksLikeArticleFilename(filename) && !looksLikeLandingFilename(filename)) return false;
+  const landing = landingScore(analysis, filename);
+  const article = articleScore(analysis, filename);
+  return landing >= 5 && landing >= article;
+}
+
+export function looksLikeArticle(analysis: DesignAnalysis, filename?: string): boolean {
+  if (looksLikeArticleFilename(filename) && !looksLikeLandingFilename(filename)) return true;
+  if (looksLikeLanding(analysis, filename)) return false;
+  const landing = landingScore(analysis, filename);
+  const article = articleScore(analysis, filename);
+  return article >= 4 && article > landing;
+}
+
+export function classifyPageKind(
+  analysis: DesignAnalysis,
+  widgets: CatalogWidget[] = [],
+  filename?: string,
+): PageKind {
+  if (looksLikeLandingFilename(filename) && !looksLikeArticleFilename(filename)) return "landing";
+  if (looksLikeArticleFilename(filename) && !looksLikeLandingFilename(filename)) return "article";
+  if (looksLikeLanding(analysis, filename)) return "landing";
+  if (looksLikeArticle(analysis, filename)) return "article";
+  if (analysis.sections.length === 0) {
+    return hasDetectedLayout(widgets) ? "article" : "primitive";
+  }
+  if (hasDetectedLayout(widgets)) {
+    // Blog widgets on the site must not turn a homepage JPEG into the article plan.
+    return articleScore(analysis, filename) > landingScore(analysis, filename) ? "article" : "landing";
+  }
+  return "primitive";
 }
 
 export function landingPageTitle(): string {
   return "Never Miss Another Client Call";
 }
 
+export function pageTitle(analysis: DesignAnalysis, widgets: CatalogWidget[], filename?: string): string {
+  if (classifyPageKind(analysis, widgets, filename) === "landing") return landingPageTitle();
+  const fromWidgets = titleFromDetectedWidgets(widgets);
+  if (fromWidgets) return fromWidgets;
+  const base = (filename ?? "design").replace(/[^\w.-]+/g, "-").replace(/\.[^.]+$/, "");
+  return `Design: ${base || "page"}`;
+}
+
 export function planPageLayout(options: {
   analysis: DesignAnalysis;
   widgets: CatalogWidget[];
   extras: LayoutExtras;
+  filename?: string;
 }): PlannedSection[] {
-  if (looksLikeLanding(options.analysis)) {
+  const kind = classifyPageKind(options.analysis, options.widgets, options.filename);
+  if (kind === "landing") {
     return planLandingPage(options.widgets, options.extras);
   }
-  if (hasDetectedLayout(options.widgets) || looksLikeArticle(options.analysis)) {
+  if (kind === "article") {
     return planArticlePage(options.widgets, options.extras);
   }
   const sections = options.analysis.sections.length
@@ -206,11 +332,6 @@ export const LANDING_STOCK = {
   dash: LANDING_DASH,
   avatar: AVATAR,
 };
-
-function looksLikeArticle(analysis: DesignAnalysis): boolean {
-  const roles = new Set(analysis.sections.map((section) => section.role));
-  return roles.has("hero") && roles.has("content");
-}
 
 function defaultPrimitiveSections(): DesignSection[] {
   return [

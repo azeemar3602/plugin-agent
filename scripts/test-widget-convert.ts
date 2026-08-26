@@ -8,8 +8,10 @@ import { writeGeneratedPlugin } from "../src/lib/generate-widgets";
 import { repairElementorDocument } from "../src/lib/widget-repair";
 import {
   columnWidths,
+  classifyPageKind,
   landingPageTitle,
   looksLikeLanding,
+  pageTitle,
   planPageLayout,
 } from "../src/lib/layout-plan";
 import {
@@ -374,6 +376,74 @@ const landingAnalysis = {
 };
 assert.equal(looksLikeLanding(landingAnalysis), true);
 assert.equal(landingPageTitle(), "Never Miss Another Client Call");
+
+const homepageLikeAnalysis = {
+  width: 1440,
+  height: 5519,
+  background: "#ffffff",
+  sections: [
+    { role: "hero", y0: 0, y1: 0.14, columns: 2, bg: "#fff", fg: "#111", imageHeavy: true },
+    { role: "cta", y0: 0.14, y1: 0.2, columns: 1, bg: "#002751", fg: "#fff", imageHeavy: false },
+    { role: "content", y0: 0.2, y1: 0.3, columns: 1, bg: "#fff", fg: "#111", imageHeavy: false },
+    { role: "footer", y0: 0.9, y1: 1, columns: 1, bg: "#002751", fg: "#fff", imageHeavy: false },
+  ],
+};
+assert.equal(
+  classifyPageKind(homepageLikeAnalysis, widgets, "Axion_Website-Home-Page-DesignV3.jpg"),
+  "landing",
+);
+assert.equal(
+  pageTitle(homepageLikeAnalysis, widgets, "Axion_Website-Home-Page-DesignV3.jpg"),
+  "Never Miss Another Client Call",
+);
+assert.equal(classifyPageKind(homepageLikeAnalysis, widgets, "upload.jpg"), "landing");
+assert.equal(pageTitle(homepageLikeAnalysis, widgets, "upload.jpg"), "Never Miss Another Client Call");
+const homepagePlan = planPageLayout({
+  analysis: homepageLikeAnalysis,
+  widgets,
+  extras: { donation: false, search: false, form: false, language: false },
+  filename: "Axion_Website-Home-Page-DesignV3.jpg",
+});
+assert.ok(homepagePlan.some((section) => section.rows.some((row) => row.columns.map((col) => col.width).join("/") === "33/33/34")));
+assert.ok(!homepagePlan.some((section) => section.analysisRole === "relatedPosts"));
+assert.ok(homepagePlan.some((section) => section.label === "Landing hero"));
+
+const articleLikeAnalysis = {
+  width: 800,
+  height: 2000,
+  background: "#ffffff",
+  sections: [
+    { role: "hero", y0: 0, y1: 0.2, columns: 1, bg: "#fff", fg: "#111", imageHeavy: true },
+    { role: "content", y0: 0.2, y1: 0.6, columns: 1, bg: "#fff", fg: "#111", imageHeavy: false },
+    { role: "cta", y0: 0.6, y1: 0.8, columns: 1, bg: "#111", fg: "#fff", imageHeavy: false },
+    { role: "footer", y0: 0.8, y1: 1, columns: 1, bg: "#111", fg: "#fff", imageHeavy: false },
+  ],
+};
+assert.equal(classifyPageKind(articleLikeAnalysis, widgets, "vets-reduce-no-shows.jpg"), "article");
+assert.equal(classifyPageKind(articleLikeAnalysis, widgets), "article");
+assert.match(pageTitle(articleLikeAnalysis, widgets, "vets-reduce-no-shows.jpg"), /No-Shows/);
+const articlePlan = planPageLayout({
+  analysis: articleLikeAnalysis,
+  widgets,
+  extras: { donation: false, search: false, form: false, language: false },
+  filename: "vets-reduce-no-shows.jpg",
+});
+assert.ok(articlePlan.some((section) => section.analysisRole === "relatedPosts"));
+assert.ok(!articlePlan.some((section) => section.label === "Landing hero"));
+
+const homepageDoc = buildElementorDocument({
+  title: pageTitle(homepageLikeAnalysis, widgets, "Axion_Website-Home-Page-DesignV3.jpg"),
+  analysis: homepageLikeAnalysis,
+  widgets,
+  extras: { donation: false, search: false, form: false, language: false },
+  filename: "Axion_Website-Home-Page-DesignV3.jpg",
+});
+assert.equal(JSON.parse(homepageDoc.json).title, "Never Miss Another Client Call");
+assert.ok(homepageDoc.sectionRoles.some((role) => role.includes("33/33/34")));
+assert.ok(!homepageDoc.sectionRoles.some((role) => role.includes("relatedPosts")));
+assert.ok(homepageDoc.json.includes("Never Miss Another"));
+assert.ok(!homepageDoc.json.includes("How Can Vets Reduce"));
+console.log("homepage routing ok", homepageDoc.sectionRoles.join(" → "));
 
 const landingDoc = buildElementorDocument({
   title: landingPageTitle(),
