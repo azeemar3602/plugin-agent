@@ -1,3 +1,4 @@
+import { GRID_BACKGROUND } from "./icons";
 import type { CatalogWidget } from "./elementor-widgets";
 import {
   layoutSummary,
@@ -156,6 +157,7 @@ function paddedStack(children: ElNode[]): ElNode {
 function rowContainer(row: PlannedRow): ElNode {
   const multi = row.columns.length > 1;
   const stackTablet = row.columns.some((column) => column.widthTablet === 100);
+  const rowGap = row.gap ?? (multi ? 28 : 0);
   return {
     id: eid(),
     elType: "container",
@@ -169,10 +171,10 @@ function rowContainer(row: PlannedRow): ElNode {
       flex_wrap: "nowrap",
       flex_align_items: row.align ?? "flex-start",
       flex_justify_content: multi ? "space-between" : "flex-start",
-      flex_gap: gap(multi ? 20 : 0),
+      flex_gap: gap(rowGap),
       flex_direction_tablet: stackTablet ? "column" : "row",
       flex_wrap_tablet: stackTablet ? "wrap" : "nowrap",
-      flex_gap_tablet: gap(multi ? 16 : 0),
+      flex_gap_tablet: gap(multi ? 20 : 0),
       flex_direction_mobile: "column",
       flex_wrap_mobile: "wrap",
       flex_gap_mobile: gap(16),
@@ -184,6 +186,7 @@ function rowContainer(row: PlannedRow): ElNode {
 
 function bannerWrap(section: PlannedSection, children: ElNode[]): ElNode {
   const banner = section.banner!;
+  const compact = Boolean(banner.compact);
   return {
     id: eid(),
     elType: "container",
@@ -194,11 +197,12 @@ function bannerWrap(section: PlannedSection, children: ElNode[]): ElNode {
       content_width: "full",
       width: { unit: "%", size: 100 },
       flex_direction: "row",
-      flex_wrap: "wrap",
+      flex_wrap: "nowrap",
       flex_align_items: "center",
       flex_justify_content: "space-between",
-      flex_gap: gap(24),
-      flex_direction_tablet: "column",
+      flex_gap: gap(compact ? 12 : 24),
+      flex_direction_tablet: compact ? "row" : "column",
+      flex_wrap_tablet: compact ? "nowrap" : "wrap",
       flex_direction_mobile: "column",
       flex_gap_mobile: gap(16),
       background_background: "classic",
@@ -211,8 +215,8 @@ function bannerWrap(section: PlannedSection, children: ElNode[]): ElNode {
         left: String(banner.radius),
         isLinked: true,
       },
-      padding: pad("32", "36", "32", "36"),
-      padding_mobile: pad("22", "20", "22", "20"),
+      padding: compact ? pad("10", "22", "10", "22") : pad("32", "36", "32", "36"),
+      padding_mobile: compact ? pad("10", "16", "10", "16") : pad("22", "20", "22", "20"),
     },
     elements: children,
   };
@@ -225,6 +229,13 @@ function sectionPadding(section: PlannedSection) {
     mobile: pad("0", "0", "0", "0"),
   };
   if (section.pad === "none") return none;
+  if (section.pad === "hero" || section.analysisRole === "hero") {
+    return {
+      desktop: pad("56", "24", "48", "24"),
+      tablet: pad("40", "20", "36", "20"),
+      mobile: pad("28", "16", "28", "16"),
+    };
+  }
   if (section.analysisRole === "header" || section.pad === "tight") {
     return {
       desktop: pad("12", "24", "12", "24"),
@@ -259,6 +270,22 @@ function outerContainer(section: PlannedSection): ElNode {
   const rowNodes = rows.map((item) => (nested ? rowContainer(item) : item.columns.map((column, index) => innerContainer(column, index)))).flat();
   const children = section.banner ? [bannerWrap(section, rowNodes)] : rowNodes;
   const padding = sectionPadding(section);
+  const background = section.gradient
+    ? {
+        background_background: "gradient",
+        background_color: section.gradient.from,
+        background_color_b: section.gradient.to,
+        gradient_type: "linear",
+        gradient_angle: { unit: "deg", size: 90 },
+      }
+    : section.bg && section.bg !== "transparent"
+      ? {
+          background_background: "classic",
+          background_color: section.bg,
+        }
+      : {
+          background_background: "",
+        };
   return {
     id: eid(),
     elType: "container",
@@ -278,8 +305,7 @@ function outerContainer(section: PlannedSection): ElNode {
       flex_direction_mobile: nested || section.columnCount > 1 ? "column" : "row",
       flex_wrap_mobile: "wrap",
       flex_gap_mobile: gap(16),
-      background_background: "classic",
-      background_color: section.bg,
+      ...background,
       padding: padding.desktop,
       padding_tablet: padding.tablet,
       padding_mobile: padding.mobile,
@@ -325,7 +351,11 @@ export function buildElementorDocument(options: {
     page_settings: {
       hide_title: "yes",
       background_background: "classic",
-      background_color: options.analysis.background,
+      background_color: "#ffffff",
+      background_image: { url: GRID_BACKGROUND, id: "", source: "url" },
+      background_repeat: "repeat",
+      background_size: "auto",
+      background_position: "top left",
     },
     content,
   };

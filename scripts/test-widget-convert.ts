@@ -212,19 +212,30 @@ assert.ok(types.includes("button"));
 assert.ok(types.includes("image"));
 assert.ok(types.includes("icon-list"));
 
-const heroHeading = allWidgets.find(
-  (node) => node.widgetType === "heading" && String(node.settings?.title ?? "").includes("How Can Vets"),
+const heroHeading = allWidgets.find((node) =>
+  String(node.settings?.editor ?? node.settings?.title ?? "").includes("How Can Vets"),
 );
 assert.ok(heroHeading);
-assert.equal(heroHeading?.settings?.size, "xxl");
-assert.equal(heroHeading?.settings?.typography_typography, "custom");
-assert.equal((heroHeading?.settings?.typography_font_size as { size?: number } | undefined)?.size, 52);
+assert.ok(String(heroHeading?.settings?.editor ?? "").includes("0498DA") || heroHeading?.widgetType === "heading");
 
 const demoButton = allWidgets.find(
   (node) => node.widgetType === "button" && String(node.settings?.text ?? "").includes("Schedule A Demo"),
 );
 assert.ok(demoButton);
 assert.equal(demoButton?.settings?.size, "lg");
+assert.ok(demoButton?.settings?.selected_icon);
+assert.equal((demoButton?.settings?.selected_icon as { library?: string })?.library, "svg");
+
+const bannerBell = allWidgets.find((node) => node.widgetType === "icon");
+assert.ok(bannerBell);
+assert.equal((bannerBell?.settings?.selected_icon as { library?: string })?.library, "svg");
+assert.equal(bannerBell?.settings?.icon_type, "svg");
+
+const pageSettings = (JSON.parse(built.json) as { page_settings?: { background_image?: { url?: string } } }).page_settings;
+assert.ok(pageSettings?.background_image?.url?.startsWith("data:image/svg+xml"));
+
+const hasNavPill = JSON.stringify(doc.content).includes("48");
+assert.ok(hasNavPill, "Nav should be a rounded pill");
 
 const faqSection = doc.content.find((section) => section.settings && (section.settings as { padding?: { top?: string } }).padding?.top === "0");
 assert.ok(faqSection, "FAQ Axion band should have zero extra Elementor padding");

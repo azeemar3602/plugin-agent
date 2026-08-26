@@ -1,4 +1,5 @@
 import type { RemotePlugin } from "./wordpress";
+import { ICONS, preferCustomIconType } from "./icons";
 
 export type WidgetRole =
   | "heading"
@@ -423,7 +424,10 @@ export function settingsFromWidget(widget: CatalogWidget): Record<string, unknow
   if (controls.split_layout?.options?.includes("columns") && !settings.split_layout) {
     settings.split_layout = "columns";
   }
+  const iconType = preferCustomIconType(controls.icon_type?.options ?? controls.selected_icon_type?.options ?? null);
+  if (iconType) settings.icon_type = iconType;
   fillMissingMedia(widget, settings);
+  fillMissingIcons(widget, settings);
   return settings;
 }
 
@@ -446,6 +450,30 @@ function fillMissingMedia(widget: CatalogWidget, settings: Record<string, unknow
     };
     settings.image_source = "custom";
   }
+}
+
+function fillMissingIcons(widget: CatalogWidget, settings: Record<string, unknown>) {
+  const icon =
+    widget.role === "articleCta"
+      ? ICONS.bell
+      : widget.role === "downloadCta"
+        ? ICONS.clipboard
+        : widget.role === "takeaways"
+          ? ICONS.dot
+          : undefined;
+  if (!icon) return;
+  if (!isSvgIcon(settings.selected_icon) && (widget.controls?.selected_icon || !widget.controls)) {
+    settings.selected_icon = icon;
+  }
+  if (!isSvgIcon(settings.icon) && widget.controls?.icon) {
+    settings.icon = icon;
+  }
+}
+
+function isSvgIcon(value: unknown): boolean {
+  if (!value || typeof value !== "object") return false;
+  const rec = value as { library?: string; value?: { url?: string } };
+  return rec.library === "svg" && typeof rec.value?.url === "string" && rec.value.url.startsWith("data:image/svg+xml");
 }
 
 function isUsableDefault(value: unknown): boolean {

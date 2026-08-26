@@ -5,6 +5,7 @@ import {
   planPageFromDetectedWidgets,
   settingsFromWidget,
 } from "./elementor-widgets";
+import { ICONS, ICON_IMGS, type ElementorSvgIcon } from "./icons";
 
 export type DesignSection = {
   role: string;
@@ -40,6 +41,7 @@ export type PlannedColumn = {
 export type PlannedRow = {
   columns: PlannedColumn[];
   align?: "center" | "stretch" | "flex-start";
+  gap?: number;
 };
 
 export type PlannedSection = {
@@ -51,8 +53,9 @@ export type PlannedSection = {
   fg: string;
   fullBleed: boolean;
   boxedWidth?: number;
-  banner?: { color: string; radius: number };
-  pad?: "none" | "tight" | "normal";
+  banner?: { color: string; radius: number; compact?: boolean };
+  gradient?: { from: string; to: string };
+  pad?: "none" | "tight" | "normal" | "hero";
   rows: PlannedRow[];
 };
 
@@ -63,19 +66,20 @@ export type LayoutExtras = {
   language: boolean;
 };
 
-const INK = "#1C1C1C";
-const NAVY = "#115696";
-const NAVY_DARK = "#0d3d66";
+const INK = "#1D2025";
+const NAVY = "#002751";
+const ACCENT = "#0498DA";
 const GOLD = "#FFD800";
-const MUTED = "#5b6570";
-const TOPBAR = "#f4f6f9";
+const MUTED = "#6B7280";
 const WHITE = "#ffffff";
+const FOOTER_TO = "#0170A8";
+const TAG_BG = "#E8F4FB";
 const HERO_IMAGE = "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=1400&q=80";
 const AVATAR = "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=128&h=128&q=80";
 const PLACEHOLDER_IMAGE = "https://placehold.co/1200x640/png?text=Image";
-const PLACEHOLDER_ICON = { value: "fas fa-star", library: "fa-solid" };
-const PLACEHOLDER_ICON_CIRCLE = { value: "fas fa-circle", library: "fa-solid" };
-const CHECK = { value: "fas fa-check", library: "fa-solid" };
+const PLACEHOLDER_ICON = ICONS.bell;
+const PLACEHOLDER_ICON_CIRCLE = ICONS.dot;
+const ARTICLE_TITLE = "How Can Vets Reduce No-Shows At Their Clinic Effectively?";
 
 const TAKEAWAYS = [
   "Confirm appointments the day before with a two-way text, not a voicemail.",
@@ -106,9 +110,6 @@ const RELATED = [
     image: "https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=800&q=80",
   },
 ];
-const ARTICLE_TITLE = "How Can Vets Reduce No-Shows At Their Clinic Effectively?";
-const BELL = { value: "fas fa-bell", library: "fa-solid" };
-const FILE = { value: "fas fa-file-alt", library: "fa-solid" };
 
 export function clampColumns(value: number): number {
   if (!Number.isFinite(value)) return 1;
@@ -170,7 +171,7 @@ function defaultPrimitiveSections(): DesignSection[] {
   return [
     { role: "hero", y0: 0, y1: 0.25, columns: 2, bg: "#f7f9fb", fg: INK, imageHeavy: true },
     { role: "features", y0: 0.25, y1: 0.45, columns: 4, bg: WHITE, fg: INK, imageHeavy: false },
-    { role: "cta", y0: 0.45, y1: 0.58, columns: 1, bg: NAVY_DARK, fg: "#f8f8f8", imageHeavy: false },
+    { role: "cta", y0: 0.45, y1: 0.58, columns: 1, bg: NAVY, fg: "#f8f8f8", imageHeavy: false },
     { role: "content", y0: 0.58, y1: 0.78, columns: 1, bg: WHITE, fg: INK, imageHeavy: false },
     { role: "media", y0: 0.78, y1: 0.9, columns: 4, bg: WHITE, fg: INK, imageHeavy: true },
     { role: "footer", y0: 0.9, y1: 1, columns: 4, bg: NAVY, fg: "#f8f8f8", imageHeavy: false },
@@ -197,7 +198,7 @@ function pack(
     label,
     detectedColumns: columnCount,
     columnCount,
-    bg: WHITE,
+    bg: "transparent",
     fg: INK,
     fullBleed: false,
     boxedWidth: 1180,
@@ -209,7 +210,7 @@ function pack(
 function row(
   percents: number[],
   fill: PlannedWidget[][],
-  opts?: { align?: PlannedRow["align"]; card?: boolean },
+  opts?: { align?: PlannedRow["align"]; card?: boolean; gap?: number },
 ): PlannedRow {
   const columns = columnsFromPercents(percents);
   fill.forEach((widgets, index) => {
@@ -218,7 +219,7 @@ function row(
       if (opts?.card) columns[index].card = true;
     }
   });
-  return { columns, align: opts?.align };
+  return { columns, align: opts?.align, gap: opts?.gap };
 }
 
 function articleTitle(hero: Record<string, unknown>): string {
@@ -236,20 +237,23 @@ function planArticlePage(widgets: CatalogWidget[], _extras: LayoutExtras): Plann
   const addons = addonsByRole(widgets);
   const hero = addons.blogHero ? settingsFromWidget(addons.blogHero) : {};
   const title = articleTitle(hero);
+  const headline = title.includes("No-Shows")
+    ? title.replace("No-Shows", mark("No-Shows"))
+    : `How Can Vets Reduce ${mark("No-Shows")} At Their Clinic Effectively?`;
   const imageUrl =
     hero.image && typeof hero.image === "object" && "url" in hero.image && typeof hero.image.url === "string" && hero.image.url
       ? hero.image.url
       : HERO_IMAGE;
 
   const navActions = row(
-    [20, 58, 22],
+    [22, 50, 28],
     [
       [
         heading(widgets, "AXION", {
           as: "h3",
           color: WHITE,
-          px: 26,
-          extra: { typography_letter_spacing: { unit: "px", size: 1.5 } },
+          px: 22,
+          extra: { typography_letter_spacing: { unit: "px", size: 1.2 } },
         }),
       ],
       [
@@ -257,7 +261,7 @@ function planArticlePage(widgets: CatalogWidget[], _extras: LayoutExtras): Plann
           editor: `<p style="margin:0;text-align:center">${["Products", "Solutions", "Company", "Resources", "Our Network"]
             .map(
               (link) =>
-                `<a href="#" style="color:#ffffff;text-decoration:none;margin:0 14px;font-weight:600;font-size:15px">${link}</a>`,
+                `<a href="#" style="color:#ffffff;text-decoration:none;margin:0 12px;font-weight:500;font-size:14px">${link}</a>`,
             )
             .join("")}</p>`,
           align: "center",
@@ -265,9 +269,9 @@ function planArticlePage(widgets: CatalogWidget[], _extras: LayoutExtras): Plann
         }),
       ],
       [
-        goldButton(widgets, "Let's Get Started"),
+        goldButton(widgets, "Let's Get Started", true),
         primitive(widgets, "text", {
-          editor: '<p style="margin:0"><a href="#" style="color:#ffffff;text-decoration:none;font-weight:600">Login</a></p>',
+          editor: `<p style="margin:0"><a href="#" style="color:#ffffff;text-decoration:none;font-weight:600;font-size:14px">${ICON_IMGS.user}Login</a></p>`,
           align: "right",
           text_color: WHITE,
         }),
@@ -283,18 +287,11 @@ function planArticlePage(widgets: CatalogWidget[], _extras: LayoutExtras): Plann
       "Top bar",
       [
         row(
-          [50, 50],
+          [100],
           [
             [
               primitive(widgets, "text", {
-                editor: '<p style="margin:0">Mon – Fri — 8:00 – 6:00</p>',
-                align: "left",
-                text_color: MUTED,
-              }),
-            ],
-            [
-              primitive(widgets, "text", {
-                editor: '<p style="margin:0">Call Us (800) 555-0148</p>',
+                editor: `<p style="margin:0;text-align:right;font-size:13px;color:${MUTED}">${ICON_IMGS.clock}Mon – Fri — 8:30 – 6:30 &nbsp;&nbsp;|&nbsp;&nbsp; ${ICON_IMGS.phone}Call Us: <strong style="color:${INK}">(855) 982-9466</strong></p>`,
                 align: "right",
                 text_color: MUTED,
               }),
@@ -303,21 +300,28 @@ function planArticlePage(widgets: CatalogWidget[], _extras: LayoutExtras): Plann
           { align: "center" },
         ),
       ],
-      { bg: TOPBAR, fullBleed: true, boxedWidth: 1180, pad: "tight" },
+      { fullBleed: true, boxedWidth: 1180, pad: "tight" },
     ),
-    pack("header", "Main nav", [navActions], { bg: NAVY, fg: WHITE, fullBleed: true, pad: "tight" }),
+    pack("header", "Main nav", [navActions], {
+      fg: WHITE,
+      fullBleed: true,
+      boxedWidth: 1180,
+      pad: "tight",
+      banner: { color: NAVY, radius: 48, compact: true },
+    }),
     pack(
       "hero",
       "Article hero",
       [
-        row(
-          [100],
-          [[heading(widgets, title, { as: "h1", color: INK, px: 52 }), authorLine(widgets)]],
-        ),
+        row([100], [[richTitle(widgets, headline, "h1", 52)]]),
         row(
           [58, 42],
           [
-            [heading(widgets, "Key Takeaways", { as: "h2", color: NAVY, px: 28 }), takeawayList(widgets)],
+            [
+              authorLine(widgets),
+              richTitle(widgets, `Key ${mark("Takeaways")}`, "h2", 28),
+              takeawayList(widgets),
+            ],
             [
               primitive(widgets, "image", {
                 image: { url: imageUrl, id: "", alt: "Veterinary technician at a desk", source: "url" },
@@ -327,10 +331,10 @@ function planArticlePage(widgets: CatalogWidget[], _extras: LayoutExtras): Plann
               }),
             ],
           ],
-          { align: "flex-start" },
+          { align: "flex-start", gap: 32 },
         ),
       ],
-      { bg: WHITE, boxedWidth: 1180 },
+      { boxedWidth: 1180, pad: "hero" },
     ),
     pack(
       "content",
@@ -340,36 +344,37 @@ function planArticlePage(widgets: CatalogWidget[], _extras: LayoutExtras): Plann
           [100],
           [
             [
-              heading(widgets, "The 9:40 AM Gap That Costs Your Clinic $180", { as: "h2", color: NAVY, px: 32 }),
-              primitive(widgets, "text", {
-                editor:
-                  "<p>A single no-show is not an empty chair. It is a block of doctor time, technician time, and a client who still needs care later in the week. The 9:40 AM slot is where that leak shows up first.</p>",
-                align: "left",
-                text_color: INK,
-              }),
-              heading(widgets, "Why Vet No-Shows Aren't Like Other No-Shows", { as: "h2", color: NAVY, px: 32 }),
-              primitive(widgets, "text", {
-                editor:
-                  "<p>Pet owners are not skipping a haircut. They are juggling a sick animal, a work day, and a reminder they never saw. Voicemail does not close that loop. Two-way texting does.</p>",
-                align: "left",
-                text_color: INK,
-              }),
-              heading(widgets, "Three Communication Fixes That Actually Move the No-Show Rate", {
-                as: "h2",
-                color: NAVY,
-                px: 32,
-              }),
-              primitive(widgets, "text", {
-                editor:
-                  "<p>1. Confirm the day before with a reply, not a broadcast.<br>2. Let the client reschedule in one tap so the slot can be refilled.<br>3. Watch same-day openings and offer them to the wait list automatically.</p>",
-                align: "left",
-                text_color: INK,
-              }),
+              heading(widgets, "The 9:40 AM Gap That Costs Your Clinic $180", { as: "h2", color: INK, px: 32 }),
+              bodyText(
+                widgets,
+                "<p>A single no-show is not an empty chair. It is a block of doctor time, technician time, and a client who still needs care later in the week. The 9:40 AM slot is where that leak shows up first.</p>",
+              ),
+              richTitle(widgets, `Why Vet ${mark("No-Shows")} Aren't Like Other No-Shows`, "h2", 32),
+              bodyText(
+                widgets,
+                "<p>Pet owners are not skipping a haircut. They are juggling a sick animal, a work day, and a reminder they never saw. Voicemail does not close that loop. Two-way texting does.</p>",
+              ),
+              richTitle(widgets, `Three Communication Fixes That Actually Move the ${mark("No-Show Rate")}`, "h2", 32),
+              heading(widgets, "1. Two-Way SMS Reminders From Your Clinic's Main Number", { as: "h3", color: INK, px: 20 }),
+              bodyText(
+                widgets,
+                "<p>Confirm the day before with a reply, not a broadcast. When the reminder comes from the clinic number, clients answer it.</p>",
+              ),
+              heading(widgets, "2. Let Clients Reschedule In One Tap", { as: "h3", color: INK, px: 20 }),
+              bodyText(
+                widgets,
+                "<p>A cancellation should become a filled slot. One-tap reschedule puts that opening back on the board before the morning rush.</p>",
+              ),
+              heading(widgets, "3. Outbound Confirmation Calls For High-Risk Slots", { as: "h3", color: INK, px: 20 }),
+              bodyText(
+                widgets,
+                "<p>Watch same-day openings and offer them to the wait list automatically. The 9:40 AM gap is where that work pays for itself.</p>",
+              ),
             ],
           ],
         ),
       ],
-      { bg: WHITE, boxedWidth: 800 },
+      { boxedWidth: 760 },
     ),
     pack(
       "cta",
@@ -378,28 +383,24 @@ function planArticlePage(widgets: CatalogWidget[], _extras: LayoutExtras): Plann
         row(
           [12, 58, 30],
           [
-            [bannerIcon(widgets, BELL, GOLD)],
+            [bannerIcon(widgets, ICONS.bell, "#111111", GOLD)],
             [
               heading(widgets, "Want fewer no-shows and a fuller schedule?", { as: "h3", color: WHITE, px: 24 }),
-              primitive(widgets, "text", {
-                editor: "<p>See how automated reminders and online booking can help your clinic.</p>",
-                align: "left",
-                text_color: "#e8eef4",
-              }),
+              bodyText(widgets, "<p>See how automated reminders and online booking can help your clinic.</p>", "#e8eef4"),
             ],
-            [goldButton(widgets, "Schedule A Demo Now")],
+            [goldButton(widgets, "Schedule A Demo Now", true)],
           ],
           { align: "center" },
         ),
       ],
-      { bg: WHITE, boxedWidth: 1180, banner: { color: NAVY_DARK, radius: 24 } },
+      { boxedWidth: 1180, banner: { color: NAVY, radius: 28 } },
     ),
     addons.faq
       ? pack(
           "faq",
           "FAQ",
           [row([100], [[{ widget: addons.faq, settings: settingsFromWidget(addons.faq) }]])],
-          { bg: WHITE, fullBleed: true, boxedWidth: 1180, pad: "none" },
+          { bg: "transparent", fullBleed: true, boxedWidth: 1180, pad: "none" },
         )
       : pack(
           "faq",
@@ -410,7 +411,7 @@ function planArticlePage(widgets: CatalogWidget[], _extras: LayoutExtras): Plann
               [[heading(widgets, "Frequently Asked Questions", { as: "h2", color: NAVY, px: 36 }), accordion(widgets)]],
             ),
           ],
-          { bg: WHITE, boxedWidth: 800 },
+          { boxedWidth: 800 },
         ),
     pack(
       "downloadCta",
@@ -419,27 +420,23 @@ function planArticlePage(widgets: CatalogWidget[], _extras: LayoutExtras): Plann
         row(
           [12, 58, 30],
           [
-            [bannerIcon(widgets, FILE, NAVY)],
+            [bannerIcon(widgets, ICONS.clipboard, WHITE, NAVY)],
             [
-              heading(widgets, "10 Ways to Reduce No-Shows at Your Clinic", { as: "h3", color: INK, px: 24 }),
-              primitive(widgets, "text", {
-                editor: "<p>A practical checklist you can implement today.</p>",
-                align: "left",
-                text_color: INK,
-              }),
+              heading(widgets, "10 Ways to Reduce No-Shows at Your Clinic", { as: "h3", color: NAVY, px: 24 }),
+              bodyText(widgets, "<p>A practical checklist you can implement today.</p>", NAVY),
             ],
-            [navyButton(widgets, "Download Free Checklist")],
+            [navyButton(widgets, "Download Free Checklist", true)],
           ],
           { align: "center" },
         ),
       ],
-      { bg: WHITE, boxedWidth: 1180, banner: { color: GOLD, radius: 24 } },
+      { boxedWidth: 1180, banner: { color: GOLD, radius: 28 } },
     ),
     pack(
       "relatedPosts",
       "Related posts",
       [
-        row([100], [[heading(widgets, "Related posts", { as: "h2", color: INK, px: 32 })]]),
+        row([100], [[heading(widgets, "Related posts", { as: "h2", color: NAVY, px: 32 })]]),
         row(
           [25, 25, 25, 25],
           RELATED.map((card) => [
@@ -449,13 +446,13 @@ function planArticlePage(widgets: CatalogWidget[], _extras: LayoutExtras): Plann
               align: "center",
             }),
             primitive(widgets, "text", {
-              editor: `<p><strong>${card.cat}</strong></p>`,
+              editor: `<p><span style="display:inline-block;background:${TAG_BG};color:${NAVY};border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700">${card.cat}</span></p>`,
               align: "left",
               text_color: NAVY,
             }),
-            heading(widgets, card.title, { as: "h3", color: INK, px: 18 }),
+            heading(widgets, card.title, { as: "h3", color: NAVY, px: 18 }),
             primitive(widgets, "text", {
-              editor: "<p>May 12, 2023 · 4 min read</p>",
+              editor: "<p>July 14, 2026 · 9 min read</p>",
               align: "left",
               text_color: MUTED,
             }),
@@ -463,7 +460,7 @@ function planArticlePage(widgets: CatalogWidget[], _extras: LayoutExtras): Plann
           { card: true, align: "stretch" },
         ),
       ],
-      { bg: WHITE, boxedWidth: 1180 },
+      { boxedWidth: 1180 },
     ),
     pack(
       "footer",
@@ -474,18 +471,17 @@ function planArticlePage(widgets: CatalogWidget[], _extras: LayoutExtras): Plann
           [
             [
               heading(widgets, "AXION", { as: "h3", color: WHITE, px: 24 }),
-              primitive(widgets, "text", {
-                editor:
-                  "<p>The communications platform for veterinary clinics that want fewer no-shows and a fuller day.</p>",
-                align: "left",
-                text_color: "#d7e4f2",
-              }),
-              heading(widgets, "(800) 555-0148", { as: "h4", color: GOLD, px: 18 }),
+              bodyText(
+                widgets,
+                "<p>All-in-one business communication — VoIP, messaging, VFAX and AI on one reliable cloud platform.</p>",
+                "#d7e4f2",
+              ),
+              heading(widgets, "(855) 982-9466", { as: "h4", color: GOLD, px: 20 }),
             ],
-            footerLinks(widgets, "Products", ["Overview", "Reminders", "Booking", "Inbox"]),
-            footerLinks(widgets, "Solutions", ["For clinics", "For groups", "Integrations"]),
-            footerLinks(widgets, "Company", ["About", "Careers", "Contact"]),
-            footerLinks(widgets, "Resources", ["Blog", "Guides", "Support"]),
+            footerLinks(widgets, "Products", ["Softphone", "PBX", "SMS", "VFax"]),
+            footerLinks(widgets, "Solutions", ["Healthcare", "Real Estate", "Finance", "Logistics"]),
+            footerLinks(widgets, "Company", ["About", "Network", "Careers", "Contact"]),
+            footerLinks(widgets, "Resources", ["Docs", "Status", "Security", "Pricing"]),
           ],
           { align: "flex-start" },
         ),
@@ -494,7 +490,7 @@ function planArticlePage(widgets: CatalogWidget[], _extras: LayoutExtras): Plann
           [
             [
               primitive(widgets, "text", {
-                editor: "<p>© 2023 Axion Communications. All rights reserved.</p>",
+                editor: "<p>© 2026 Axion Communications. All rights reserved.</p>",
                 align: "left",
                 text_color: "#d7e4f2",
               }),
@@ -510,7 +506,7 @@ function planArticlePage(widgets: CatalogWidget[], _extras: LayoutExtras): Plann
           { align: "center" },
         ),
       ],
-      { bg: NAVY, fg: WHITE, fullBleed: true, boxedWidth: 1180 },
+      { bg: NAVY, fg: WHITE, fullBleed: true, boxedWidth: 1180, gradient: { from: NAVY, to: FOOTER_TO } },
     ),
   ];
 }
@@ -554,9 +550,32 @@ function heading(
   });
 }
 
+function mark(word: string): string {
+  return `<span style="color:${ACCENT}">${word}</span>`;
+}
+
+function richTitle(widgets: CatalogWidget[], html: string, as: "h1" | "h2", px: number): PlannedWidget {
+  return primitive(widgets, "text", {
+    editor: `<${as} style="margin:0;font-size:${px}px;font-weight:800;line-height:${as === "h1" ? 1.12 : 1.25};color:${INK}">${html}</${as}>`,
+    align: "left",
+    text_color: INK,
+  });
+}
+
+function bodyText(widgets: CatalogWidget[], html: string, color = INK): PlannedWidget {
+  return primitive(widgets, "text", {
+    editor: html,
+    align: "left",
+    text_color: color,
+    typography_typography: "custom",
+    typography_font_size: { unit: "px", size: 17 },
+    typography_line_height: { unit: "em", size: 1.65 },
+  });
+}
+
 function authorLine(widgets: CatalogWidget[]): PlannedWidget {
   return primitive(widgets, "text", {
-    editor: `<p style="display:flex;align-items:center;gap:12px;margin:8px 0 20px"><img src="${AVATAR}" alt="" width="40" height="40" style="width:40px;height:40px;border-radius:50%;object-fit:cover" /><span style="color:${MUTED}"><strong style="color:${INK}">Admin</strong> · May 12, 2023</span></p>`,
+    editor: `<p style="display:flex;align-items:center;gap:12px;margin:0 0 18px"><img src="${AVATAR}" alt="" width="40" height="40" style="width:40px;height:40px;border-radius:50%;object-fit:cover" /><span style="color:${MUTED}"><strong style="color:${INK}">T</strong> · May 12, 2026</span></p>`,
     align: "left",
     text_color: MUTED,
   });
@@ -564,14 +583,20 @@ function authorLine(widgets: CatalogWidget[]): PlannedWidget {
 
 function bannerIcon(
   widgets: CatalogWidget[],
-  icon: { value: string; library: string },
+  icon: ElementorSvgIcon,
   color: string,
+  circle?: string,
 ): PlannedWidget {
   return primitive(widgets, "icon", {
     selected_icon: icon,
+    icon_type: "svg",
+    view: circle ? "stacked" : "default",
+    shape: circle ? "circle" : "",
     primary_color: color,
     hover_primary_color: color,
-    size: { unit: "px", size: 36 },
+    secondary_color: circle ?? color,
+    hover_secondary_color: circle ?? color,
+    size: { unit: "px", size: circle ? 20 : 28 },
     align: "center",
   });
 }
@@ -584,13 +609,13 @@ function takeawayList(widgets: CatalogWidget[]): PlannedWidget {
       settings: {
         icon_list: TAKEAWAYS.map((text) => ({
           text,
-          selected_icon: CHECK,
+          selected_icon: ICONS.dot,
           link: { url: "", is_external: "", nofollow: "" },
         })),
         text_color: INK,
-        icon_color: NAVY,
-        space_between: { unit: "px", size: 10 },
-        icon_size: { unit: "px", size: 14 },
+        icon_color: INK,
+        space_between: { unit: "px", size: 14 },
+        icon_size: { unit: "px", size: 8 },
       },
     };
   }
@@ -627,7 +652,7 @@ function accordion(widgets: CatalogWidget[]): PlannedWidget {
   };
 }
 
-function goldButton(widgets: CatalogWidget[], text: string): PlannedWidget {
+function goldButton(widgets: CatalogWidget[], text: string, arrow = false): PlannedWidget {
   return primitive(widgets, "button", {
     text,
     size: "lg",
@@ -638,11 +663,19 @@ function goldButton(widgets: CatalogWidget[], text: string): PlannedWidget {
     typography_typography: "custom",
     typography_font_weight: "700",
     typography_font_size: { unit: "px", size: 15 },
+    ...(arrow
+      ? {
+          selected_icon: ICONS.arrowDark,
+          icon_type: "svg",
+          icon_align: "right",
+          icon_indent: { unit: "px", size: 8 },
+        }
+      : {}),
     link: { url: "#", is_external: "", nofollow: "" },
   });
 }
 
-function navyButton(widgets: CatalogWidget[], text: string): PlannedWidget {
+function navyButton(widgets: CatalogWidget[], text: string, arrow = false): PlannedWidget {
   return primitive(widgets, "button", {
     text,
     size: "lg",
@@ -653,6 +686,14 @@ function navyButton(widgets: CatalogWidget[], text: string): PlannedWidget {
     typography_typography: "custom",
     typography_font_weight: "700",
     typography_font_size: { unit: "px", size: 15 },
+    ...(arrow
+      ? {
+          selected_icon: ICONS.arrowLight,
+          icon_type: "svg",
+          icon_align: "right",
+          icon_indent: { unit: "px", size: 8 },
+        }
+      : {}),
     link: { url: "#", is_external: "", nofollow: "" },
   });
 }
