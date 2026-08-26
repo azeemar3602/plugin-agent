@@ -74,6 +74,7 @@ async function main() {
 
   const help = await runAgent(storeWithSite(), "help");
   assert.match(help[0].text, /JPEG/);
+  assert.match(help[0].text, /PDF/);
   assert.match(help[0].text, /do not need to paste the URL/i);
   assert.match(help[0].text, /Icon List/);
 

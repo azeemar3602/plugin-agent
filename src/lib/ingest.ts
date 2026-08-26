@@ -28,6 +28,7 @@ import { cropLandingImages } from "./design-crops";
 import { LANDING_STOCK } from "./layout-plan";
 import { collectRemoteImageUrls, replaceRemoteImageUrls, type HostedMedia } from "./wp-media";
 import { summarizeRepairs } from "./widget-repair";
+import { isPdfFilename, rasterizePdfToJpeg } from "./pdf-raster";
 
 type IncomingFile = {
   relativePath: string;
@@ -185,7 +186,15 @@ async function processDesigns(designs: IncomingFile[]) {
     const sourceName = basenameOf(design).replace(/[^\w.-]+/g, "-") || "design";
     const sourcePath = path.join(prepDir, sourceName);
     await writeFile(sourcePath, design.buffer);
-    const analysis = await analyzeDesignFile(sourcePath, design.buffer);
+    let raster = design.buffer;
+    if (isPdfFilename(sourceName) || design.buffer.subarray(0, 5).toString("utf8") === "%PDF-") {
+      raster = await rasterizePdfToJpeg(design.buffer);
+      await writeFile(path.join(prepDir, sourceName.replace(/\.pdf$/i, ".jpg") || "design.jpg"), raster);
+    }
+    const analysis = await analyzeDesignFile(
+      isPdfFilename(sourceName) ? path.join(prepDir, sourceName.replace(/\.pdf$/i, ".jpg") || "design.jpg") : sourcePath,
+      raster,
+    );
     const ensured = await ensureGeneratedWidgets({
       site,
       plugins,
@@ -212,7 +221,12 @@ async function processDesigns(designs: IncomingFile[]) {
     let uploadedCount = 0;
     if (site?.url && site.username && site.password) {
       try {
-        const hosted = await hostDesignImages(site, json, design);
+        const hosted = await hostDesignImages(site, json, {
+          relativePath: isPdfFilename(sourceName)
+            ? sourceName.replace(/\.pdf$/i, ".jpg") || "design.jpg"
+            : sourceName,
+          buffer: raster,
+        });
         json = hosted.json;
         uploadedCount = hosted.uploaded;
         await importElementorFiles({

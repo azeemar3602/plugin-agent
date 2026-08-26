@@ -13,6 +13,7 @@ import {
   type WidgetRole,
 } from "./elementor-widgets";
 import { appRoot, dataDir } from "./paths";
+import { isPdfFilename, rasterizePdfToJpeg } from "./pdf-raster";
 import type { RemoteElementorWidget, RemotePlugin } from "./wordpress";
 
 const execFile = promisify(execFileCb);
@@ -43,6 +44,10 @@ export async function analyzeDesignFile(filePath: string, buffer: Buffer): Promi
   if (/\.(jpe?g|png)$/i.test(name)) {
     return analyzeDesignBuffer(buffer, name);
   }
+  if (isPdfFilename(name) || buffer.subarray(0, 5).toString("utf8") === "%PDF-") {
+    const jpeg = await rasterizePdfToJpeg(buffer);
+    return analyzeDesignBuffer(jpeg, name.replace(/\.pdf$/i, ".jpg") || "design.jpg");
+  }
   const script = path.join(appRoot(), "scripts", "analyze_design.py");
   try {
     const { stdout, stderr } = await execFile("python3", [script, filePath], {
@@ -50,12 +55,14 @@ export async function analyzeDesignFile(filePath: string, buffer: Buffer): Promi
       maxBuffer: 8 * 1024 * 1024,
     });
     if (!stdout.trim()) {
-      throw new Error(stderr.trim() || "Could not read that PDF.");
+      throw new Error(stderr.trim() || "Could not read that design file.");
     }
     return JSON.parse(stdout) as DesignAnalysis;
-  } catch {
+  } catch (error) {
     throw new Error(
-      "PDF analysis needs Python on this machine. Export the first page as a JPEG or PNG and drop that instead.",
+      error instanceof Error
+        ? error.message
+        : "Could not read that PDF. Drop a JPEG, PNG, or PDF of the design.",
     );
   }
 }

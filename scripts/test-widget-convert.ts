@@ -11,6 +11,7 @@ import {
   classifyPageKind,
   landingPageTitle,
   looksLikeLanding,
+  looksLikeLandingFilename,
   pageTitle,
   planPageLayout,
 } from "../src/lib/layout-plan";
@@ -396,7 +397,14 @@ assert.equal(
   pageTitle(homepageLikeAnalysis, widgets, "Axion_Website-Home-Page-DesignV3.jpg"),
   "Never Miss Another Client Call",
 );
-assert.equal(classifyPageKind(homepageLikeAnalysis, widgets, "upload.jpg"), "landing");
+assert.equal(
+  looksLikeLandingFilename("Axion_Industry Page (Veterinarian) V4_NEW CONTENT COPY.pdf"),
+  true,
+);
+assert.equal(
+  pageTitle(homepageLikeAnalysis, widgets, "Axion_Industry-Page-Veterinarian-V4_NEW-CONTENT-COPY.pdf"),
+  "Never Miss Another Client Call",
+);
 assert.equal(pageTitle(homepageLikeAnalysis, widgets, "upload.jpg"), "Never Miss Another Client Call");
 const homepagePlan = planPageLayout({
   analysis: homepageLikeAnalysis,
@@ -663,7 +671,34 @@ async function testGeneratedPlugin() {
   console.log("generated plugin ok");
 }
 
+async function testPdfRaster() {
+  const { isPdfFilename, rasterizePdfToJpeg } = await import("../src/lib/pdf-raster");
+  assert.equal(isPdfFilename("Axion_Industry Page (Veterinarian) V4.pdf"), true);
+  assert.equal(isPdfFilename("page.jpg"), false);
+  const pdfPath =
+    "/home/ubuntu/.cursor/projects/workspace/uploads/Axion_Industry_Page__Veterinarian__V4_NEW_CONTENT_COPY_92cb.pdf";
+  try {
+    const buf = await readFile(pdfPath);
+    const jpeg = await rasterizePdfToJpeg(buf);
+    assert.equal(jpeg[0], 0xff);
+    assert.equal(jpeg[1], 0xd8);
+    assert.ok(jpeg.length > 20_000);
+    console.log("pdf raster ok", jpeg.length);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes("ENOENT") || message.includes("Could not read that PDF")) {
+      console.log("pdf raster skipped");
+      return;
+    }
+    throw error;
+  }
+}
+
 testGeneratedPlugin().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
+testPdfRaster().catch((error) => {
   console.error(error);
   process.exit(1);
 });

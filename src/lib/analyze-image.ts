@@ -15,7 +15,7 @@ function decodeRaster(buffer: Buffer, filename: string): Raster {
     return decodeJpeg(buffer, { maxMemoryUsageInMB: 1024, maxResolutionInMP: 200 });
   }
   throw new Error(
-    "Drop a JPEG or PNG of the design. For a PDF, export the first page as PNG and drop that.",
+    "Drop a JPEG or PNG of the design. For a PDF, use Convert PDF in Plugin Agent.",
   );
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Download, FolderUp, LoaderCircle, RefreshCw, SendHorizontal } from "lucide-react";
+import { Download, FileText, FolderUp, LoaderCircle, RefreshCw, SendHorizontal } from "lucide-react";
 
 import { AgentText, MessageCard, PressMark, ToolSteps } from "@/components/message-cards";
 import { buttonVariants } from "@/components/ui/button";
@@ -43,6 +43,7 @@ export function AgentApp() {
   const [windowsInstaller, setWindowsInstaller] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
   const busy = useRef(false);
 
   async function loadRemote() {
@@ -236,7 +237,7 @@ export function AgentApp() {
       {dragging ? (
         <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-background/80">
           <p className="rounded-2xl border border-dashed border-primary px-6 py-4 text-sm font-medium">
-            Drop plugin zip and/or Elementor JSON templates, or a JPEG/PNG/PDF design
+            Drop a JPEG, PNG, or PDF of the page design — or a plugin zip / Elementor JSON
           </p>
         </div>
       ) : null}
@@ -382,14 +383,13 @@ export function AgentApp() {
           <section className="rounded-2xl border border-dashed border-primary/50 bg-primary/8 p-4">
             <p className="flex items-center gap-2 text-sm font-medium">
               <FolderUp className="size-4 text-primary" />
-              Drag plugin, templates, or a design
+              Drag a plugin, templates, JPEG, or PDF
             </p>
             <p className="mt-2 text-xs leading-5 text-muted-foreground">
-              Drop a plugin zip, Elementor JSON, and/or a JPEG, PNG, or PDF of a page design. The
-              agent maps sections first, then the column count in each section, then builds
-              Elementor containers and drops widgets into those columns. Tablet keeps 2-up where
-              needed; mobile stacks to one column. If a needed widget is missing, it generates a
-              real Elementor widget plugin and uses that — not an HTML block.
+              Drop a plugin zip, Elementor JSON, a JPEG/PNG, or a PDF of the page. Plugin Agent
+              rasterizes PDFs, maps sections then columns, and builds Elementor containers. Tablet
+              keeps 2-up where needed; mobile stacks to one column. If a needed widget is missing, it
+              generates a real Elementor widget plugin and uses that — not an HTML block.
             </p>
             <form
               action="/api/upload"
@@ -413,6 +413,32 @@ export function AgentApp() {
                 Install on WordPress
               </button>
             </form>
+            <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <input
+                ref={pdfInputRef}
+                type="file"
+                accept=".pdf,application/pdf"
+                className="sr-only"
+                onChange={(event) => {
+                  if (event.currentTarget.files?.length) {
+                    void uploadFileList(event.currentTarget.files);
+                    event.currentTarget.value = "";
+                  }
+                }}
+              />
+              <button
+                type="button"
+                disabled={sending}
+                onClick={() => pdfInputRef.current?.click()}
+                className={cn(buttonVariants({ size: "lg", variant: "outline" }), "h-11 px-4")}
+              >
+                <FileText />
+                Convert PDF
+              </button>
+              <p className="text-xs text-muted-foreground">
+                Multi-page PDFs are stacked into one page, then converted like a JPEG.
+              </p>
+            </div>
             <form
               action="/api/upload"
               method="post"
@@ -488,7 +514,7 @@ export function AgentApp() {
             type="text"
             autoComplete="off"
             disabled={sending}
-            placeholder="Ask about the last page, or drop a JPEG"
+            placeholder="Ask about the last page, or drop a JPEG or PDF"
             className="h-11 min-w-0 flex-1 rounded-xl border border-input bg-input/30 px-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
           />
           <button

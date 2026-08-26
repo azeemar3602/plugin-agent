@@ -159,7 +159,7 @@ export async function runAgent(store: Store, text: string): Promise<ChatMessage[
     };
     return [
       say(
-        "I fix that on convert, not after you audit Elementor. Every JPEG drop rewrites titles, lists, and icon rows to Heading / Icon / Icon List / Icon Box before import — those do not stay as Text Editor. Drop the design again only if the live page is from an older convert.",
+        "I fix that on convert, not after you audit Elementor. Every JPEG or PDF drop rewrites titles, lists, and icon rows to Heading / Icon / Icon List / Icon Box before import — those do not stay as Text Editor. Drop the design again only if the live page is from an older convert.",
       ),
     ];
   }
@@ -293,9 +293,9 @@ function connectedIdleReply(store: Store, site: Site): ChatMessage[] {
   const parts = [`You're on **${site.label}**.`];
   if (design?.pageUrl) {
     parts.push(`**${design.title}** is live at ${design.pageUrl}.`);
-    parts.push("Drop a JPEG only if you want another page — you don't need to paste the site URL again.");
+    parts.push("Drop a JPEG or PDF only if you want another page — you don't need to paste the site URL again.");
   } else {
-    parts.push("Drop a JPEG to convert a page, or a plugin zip / Elementor JSON. You don't need to paste the site URL again.");
+    parts.push("Drop a JPEG or PDF to convert a page, or a plugin zip / Elementor JSON. You don't need to paste the site URL again.");
   }
   return [say(parts.join(" "), [], { kind: "site", site: toPublicSite(site) })];
 }
@@ -305,13 +305,13 @@ function pageStatusReply(store: Store, site: Site): ChatMessage[] {
   if (design?.pageUrl) {
     return [
       say(
-        `Yes — **${design.title}** is already live at ${design.pageUrl}. Plugin Agent converted it on **${site.label}**. Drop another JPEG only if you want a new page.`,
+        `Yes — **${design.title}** is already live at ${design.pageUrl}. Plugin Agent converted it on **${site.label}**. Drop another JPEG or PDF only if you want a new page.`,
       ),
     ];
   }
   return [
     say(
-      `No converted page in this session yet. Drop a JPEG onto this window and I'll build it on **${site.label}**.`,
+      `No converted page in this session yet. Drop a JPEG or PDF onto this window and I'll build it on **${site.label}**.`,
     ),
   ];
 }
@@ -780,7 +780,7 @@ function isNewSiteCommand(lower: string): boolean {
 function helpText(): string {
   return [
     "This window is already aimed at the WordPress site in the header. You do not need to paste the URL again.",
-    "Drop a JPEG/PNG of a page design to convert it to Elementor and publish it.",
+    "Drop a JPEG, PNG, or PDF of a page design to convert it to Elementor and publish it.",
     "Lists, titles, and icon rows become Heading / Icon / Icon List / Icon Box automatically — not Text Editor.",
     "Drop a plugin zip or Elementor JSON to install those on the same site.",
     "Use **Add site** only when you want a different WordPress website.",

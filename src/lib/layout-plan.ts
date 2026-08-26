@@ -175,7 +175,7 @@ function normalizedFilename(filename?: string): string {
 
 export function looksLikeLandingFilename(filename?: string): boolean {
   const name = normalizedFilename(filename);
-  return /home-?page|homepage|landing-page|(?:^|-)landing(?:-|$)|never-miss|client-call|(?:^|-)index(?:-|$)/.test(
+  return /home-?page|homepage|landing-page|(?:^|-)landing(?:-|$)|never-miss|client-call|(?:^|-)index(?:-|$)|industry-page|veterinar/.test(
     name,
   );
 }
