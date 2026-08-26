@@ -45,14 +45,21 @@ export function cropLandingImages(buffer: Buffer): CroppedAsset[] {
       filename: "axion-hero-devices.png",
       mime: "image/png",
       alt: "Axion on a laptop and phone beside a veterinarian with a dog",
-      buffer: cropPng(src, 0.5, 0.048, 0.97, 0.145),
+      buffer: cropPng(src, 0.5, 0.04, 0.98, 0.128),
+    },
+    {
+      key: "trustLogos",
+      filename: "axion-trusted-logos.png",
+      mime: "image/png",
+      alt: "otto, Covetrus Avimark, Pulse, Ascend, and Impromed",
+      buffer: cropPng(src, 0.38, 0.136, 0.97, 0.154),
     },
     {
       key: "dash",
       filename: "axion-dashboard.png",
       mime: "image/png",
       alt: "Axion communications dashboard",
-      buffer: cropPng(src, 0.46, 0.805, 0.97, 0.905),
+      buffer: cropPng(src, 0.5, 0.888, 0.97, 0.938),
     },
   ];
 }

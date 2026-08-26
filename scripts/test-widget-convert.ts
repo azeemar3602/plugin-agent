@@ -475,6 +475,11 @@ assert.ok(landingJson.includes("Intelligent call routing"));
 assert.ok(landingJson.includes("Increase Revenue"));
 assert.ok(landingJson.includes("Capture every opportunity"));
 assert.ok(landingJson.includes("HUNDREDS OF"));
+assert.ok(landingJson.includes("Watch Axion Highlight Video"));
+assert.ok(landingJson.includes("Jeff Falkners"));
+assert.ok(landingJson.includes("90 days"));
+assert.ok(landingJson.includes("See Axion In Action"));
+assert.ok(landingJson.includes("Always Answers."));
 assert.ok(!landingJson.includes("OTTO &nbsp;·&nbsp; COVETRUS"));
 assert.ok(!landingJson.includes('width="28" height="28"'));
 const landingNodes = walkWidgets(JSON.parse(landingDoc.json).content);
@@ -484,7 +489,7 @@ const heroBox = landingNodes.find(
 assert.ok(heroBox);
 const trustedList = landingNodes.find(
   (node) =>
-    node.widgetType === "icon-list" && JSON.stringify(node.settings?.icon_list ?? "").includes("COVETRUS"),
+    node.widgetType === "icon-list" && JSON.stringify(node.settings?.icon_list ?? "").includes("avimark"),
 );
 assert.ok(trustedList);
 assert.equal(trustedList?.settings?.view, "inline");

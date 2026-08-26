@@ -385,6 +385,7 @@ async function hostDesignImages(
       });
       if (crop.key === "hero") hosted.set(LANDING_STOCK.hero, media);
       if (crop.key === "dash") hosted.set(LANDING_STOCK.dash, media);
+      if (crop.key === "trustLogos") hosted.set(LANDING_STOCK.trustLogos, media);
       uploaded += 1;
     }
   } catch {

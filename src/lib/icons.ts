@@ -21,6 +21,13 @@ export const FA = {
   clipboard: { library: "fa-solid" as const, value: "fas fa-clipboard-list" },
   circle: { library: "fa-solid" as const, value: "fas fa-circle" },
   users: { library: "fa-solid" as const, value: "fas fa-users" },
+  star: { library: "fa-solid" as const, value: "fas fa-star" },
+  quote: { library: "fa-solid" as const, value: "fas fa-quote-left" },
+  chart: { library: "fa-solid" as const, value: "fas fa-chart-bar" },
+  play: { library: "fa-solid" as const, value: "fas fa-play" },
+  user: { library: "fa-solid" as const, value: "fas fa-user" },
+  headset: { library: "fa-solid" as const, value: "fas fa-headset" },
+  lock: { library: "fa-solid" as const, value: "fas fa-lock" },
 };
 
 function dataUri(svg: string): string {

@@ -42,6 +42,7 @@ export type PlannedColumn = {
   cardPad?: number;
   cardShadow?: boolean;
   direction?: "row" | "column";
+  alignItems?: "center" | "stretch" | "flex-start";
   /** Wrap a slice of widgets into an N-column grid (used for the hero check boxes). */
   grid?: { from: number; count: number; columns: number };
 };
@@ -103,8 +104,8 @@ const HERO_CHECKS = [
   { title: "Cover After-Hours", copy: "Live answer when you are closed" },
 ];
 
-const TRUSTED_BRANDS = ["OTTO", "COVETRUS", "AVIMARK", "PULSE", "EZYVET"];
-const INTEGRATION_BRANDS = ["OTTO", "COVETRUS", "AVIMARK", "PULSE", "EZYVET", "DAYSMART"];
+const TRUSTED_BRANDS = ["otto", "covetrus avimark", "covetrus pulse", "covetrus ascend", "covetrus impromed"];
+const INTEGRATION_BRANDS = ["otto", "covetrus avimark", "covetrus pulse", "covetrus ascend", "covetrus impromed"];
 
 const RELATED = [
   {
@@ -322,6 +323,8 @@ const LANDING_SUPPORT =
   "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&w=800&q=80";
 const LANDING_DASH =
   "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1400&q=80";
+const LANDING_TRUST_LOGOS =
+  "https://images.unsplash.com/photo-1556761175-4b46a572b786?auto=format&fit=crop&w=1400&q=80";
 const PAIN_BG = "#FFF5F5";
 const RED = "#E24B4A";
 const GREEN = "#22C55E";
@@ -331,6 +334,7 @@ export const LANDING_STOCK = {
   support: LANDING_SUPPORT,
   dash: LANDING_DASH,
   avatar: AVATAR,
+  trustLogos: LANDING_TRUST_LOGOS,
 };
 
 function defaultPrimitiveSections(): DesignSection[] {
@@ -385,6 +389,7 @@ function row(
     cardPad?: number;
     cardShadow?: boolean[];
     gap?: number;
+    columnAlign?: Array<PlannedColumn["alignItems"]>;
   },
 ): PlannedRow {
   const columns = columnsFromPercents(percents);
@@ -398,6 +403,7 @@ function row(
     if (opts?.cardRadius != null) column.cardRadius = opts.cardRadius;
     if (opts?.cardPad != null) column.cardPad = opts.cardPad;
     if (opts?.cardShadow?.[index]) column.cardShadow = true;
+    if (opts?.columnAlign?.[index]) column.alignItems = opts.columnAlign[index];
   });
   return { columns, align: opts?.align, gap: opts?.gap };
 }
@@ -453,11 +459,11 @@ function planLandingPage(widgets: CatalogWidget[], extras: LayoutExtras): Planne
   const nav = row(
     [22, 50, 28],
     [
-      [heading(widgets, "AXION", { as: "h3", color: WHITE, px: 22 })],
+      [heading(widgets, "AXION COMMUNICATIONS", { as: "h3", color: WHITE, px: 15 })],
       [
         primitive(widgets, "text", {
           editor: `<p style="margin:0;text-align:center">${["Products", "Solutions", "Company", "Resources", "Our Network"]
-            .map((link) => `<a href="#" style="color:#ffffff;text-decoration:none;margin:0 12px;font-weight:500;font-size:14px">${link}</a>`)
+            .map((link) => `<a href="#" style="color:#ffffff;text-decoration:none;margin:0 12px;font-weight:500;font-size:14px">${link} ▾</a>`)
             .join("")}</p>`,
           align: "center",
           text_color: WHITE,
@@ -491,22 +497,25 @@ function planLandingPage(widgets: CatalogWidget[], extras: LayoutExtras): Planne
     [50, 50],
     [
       [
-        heading(widgets, "See Axion on a live clinic day", { as: "h2", color: NAVY, px: 28 }),
-        bodyText(widgets, "<p>Tell us the practice name. We will show the routing, reminders, and after-hours flow.</p>"),
+        heading(widgets, "See Axion In Action", { as: "h2", color: WHITE, px: 32 }),
+        bodyText(widgets, "<p>Book your personalized demo.</p>", "#e8eef4"),
         ...form,
+        bodyText(
+          widgets,
+          `<p>${ICON_IMGS.clock} See it live and lock in WVC show pricing—available to booth visitors only.</p>`,
+          "#d7e4f2",
+        ),
       ],
       [
         primitive(widgets, "image", {
-          image: { url: LANDING_SUPPORT, id: "", alt: "Support specialist", source: "url" },
+          image: { url: LANDING_SUPPORT, id: "", alt: "Live U.S. support specialist", source: "url" },
           image_size: "full",
           align: "center",
           border_radius: { unit: "%", top: "50", right: "50", bottom: "50", left: "50", isLinked: true },
         }),
-        bodyText(
-          widgets,
-          "<p>Live U.S. support · Average answer time under a minute · Help that knows clinics</p>",
-          "#e8eef4",
-        ),
+        iconBox(widgets, "Live U.S. Support 24/7", "The same team you'll call after you switch", FA.headset),
+        iconBox(widgets, "About 7 Seconds", "Average answer time", FA.clock),
+        iconBox(widgets, "The Same Team", "You'll call after you switch", FA.users),
       ],
     ],
     { align: "center", gap: 32 },
@@ -564,9 +573,9 @@ function planLandingPage(widgets: CatalogWidget[], extras: LayoutExtras): Planne
                 ...HERO_CHECKS.map((item) => iconBox(widgets, item.title, item.copy)),
                 goldButton(widgets, "Book a Demo", true, "left"),
                 primitive(widgets, "text", {
-                  editor: `<p style="margin:8px 0 0;color:${MUTED}">15 minutes. No pressure.</p>`,
+                  editor: `<p style="margin:8px 0 0;color:${ACCENT};font-weight:600">15 minutes. No pressure.</p>`,
                   align: "left",
-                  text_color: MUTED,
+                  text_color: ACCENT,
                 }),
               ],
               [
@@ -591,19 +600,24 @@ function planLandingPage(widgets: CatalogWidget[], extras: LayoutExtras): Planne
       "Trusted by",
       [
         row(
-          [12, 28, 60],
+          [10, 26, 64],
           [
-            [bannerIcon(widgets, FA.users, GOLD)],
+            [bannerIcon(widgets, FA.users, GOLD), bannerIcon(widgets, FA.star, GOLD)],
             [
               heading(widgets, "Trusted By", { as: "h4", color: WHITE, px: 13 }),
               heading(widgets, "HUNDREDS OF", { as: "h3", color: GOLD, px: 22 }),
               heading(widgets, "Veterinary Practices", { as: "h4", color: WHITE, px: 16 }),
             ],
             [
+              primitive(widgets, "image", {
+                image: { url: LANDING_TRUST_LOGOS, id: "", alt: "otto, Covetrus Avimark, Pulse, Ascend, Impromed", source: "url" },
+                image_size: "full",
+                align: "center",
+              }),
               takeawayList(widgets, TRUSTED_BRANDS, FA.circle, "#d7e4f2", "inline"),
             ],
           ],
-          { align: "center", gap: 20 },
+          { align: "center", gap: 16 },
         ),
       ],
       { bg: NAVY, fullBleed: true, boxedWidth: 1180, pad: "tight" },
@@ -616,19 +630,20 @@ function planLandingPage(widgets: CatalogWidget[], extras: LayoutExtras): Planne
         row(
           [33, 33, 34],
           pains.map((item) => [
-            heading(widgets, item.n, { as: "h3", color: RED, px: 42 }),
-            bannerIcon(widgets, item.icon, RED, undefined, "left"),
-            heading(widgets, item.title, { as: "h3", color: RED, px: 22 }),
-            bodyText(widgets, `<p>${item.copy}</p>`),
+            numberBadge(widgets, item.n, RED, WHITE),
+            bannerIcon(widgets, item.icon, RED),
+            heading(widgets, item.title, { as: "h3", color: RED, px: 20, align: "center" }),
+            bodyText(widgets, `<p style="text-align:center">${item.copy}</p>`),
           ]),
           {
             card: true,
             cardBg: [PAIN_BG, PAIN_BG, PAIN_BG],
             cardBorder: ["none", "none", "none"],
             cardRadius: 18,
-            cardPad: 28,
+            cardPad: 32,
             align: "stretch",
             gap: 22,
+            columnAlign: ["center", "center", "center"],
           },
         ),
       ],
@@ -638,33 +653,23 @@ function planLandingPage(widgets: CatalogWidget[], extras: LayoutExtras): Planne
       "features",
       "What you gain",
       [
-        row([100], [[heading(widgets, "What you gain", { as: "h2", color: NAVY, px: 34 })]]),
+        row([100], [[heading(widgets, "WHAT YOU GAIN", { as: "h2", color: NAVY, px: 28, align: "center" })]]),
         row(
           [33, 33, 34],
           gains.map((item) => [
-            heading(widgets, item.n, {
-              as: "h3",
-              color: item.featured ? GOLD : ACCENT,
-              px: 28,
-              align: "center",
-            }),
-            bannerIcon(widgets, item.icon, item.featured ? GOLD : ACCENT),
+            numberBadge(widgets, item.n, item.featured ? GOLD : NAVY, item.featured ? INK : WHITE),
+            bannerIcon(widgets, item.icon, item.featured ? GOLD : NAVY),
             heading(widgets, item.title, {
               as: "h3",
-              color: item.featured ? WHITE : NAVY,
+              color: item.featured ? GOLD : NAVY,
               px: 20,
               align: "center",
             }),
-            takeawayList(
-              widgets,
-              item.bullets,
-              FA.check,
-              item.featured ? WHITE : INK,
-            ),
+            takeawayList(widgets, item.bullets, FA.check, item.featured ? WHITE : INK),
             bodyText(
               widgets,
-              `<p><strong>Result:</strong> ${item.result}</p>`,
-              item.featured ? WHITE : INK,
+              `<p style="text-align:center"><strong>Result:</strong> ${item.result}</p>`,
+              item.featured ? GOLD : INK,
             ),
           ]),
           {
@@ -676,21 +681,16 @@ function planLandingPage(widgets: CatalogWidget[], extras: LayoutExtras): Planne
             cardShadow: [false, false, true],
             align: "stretch",
             gap: 22,
+            columnAlign: ["center", "center", "center"],
           },
         ),
         row(
-          [40, 60],
+          [50, 50],
           [
-            [goldButton(widgets, "Book a Demo", true, "left")],
-            [
-              primitive(widgets, "text", {
-                editor: `<p style="margin:0"><a href="#" style="color:${NAVY};font-weight:700;text-decoration:none">Watch a 1-minute highlight video</a></p>`,
-                align: "left",
-                text_color: NAVY,
-              }),
-            ],
+            [goldButton(widgets, "Book a Demo", true, "right")],
+            [ghostButton(widgets, "Watch Axion Highlight Video")],
           ],
-          { align: "center" },
+          { align: "center", gap: 16 },
         ),
       ],
       { boxedWidth: 1180 },
@@ -700,10 +700,7 @@ function planLandingPage(widgets: CatalogWidget[], extras: LayoutExtras): Planne
       "Integrations",
       [
         row([100], [[richTitle(widgets, `Works Seamlessly With ${mark("Your Practice Software")}`, "h2", 32)]]),
-        row(
-          [100],
-          [[takeawayList(widgets, INTEGRATION_BRANDS, FA.circle, MUTED, "inline")]],
-        ),
+        row([100], [[takeawayList(widgets, INTEGRATION_BRANDS, FA.circle, MUTED, "inline")]]),
       ],
       { boxedWidth: 1180 },
     ),
@@ -712,25 +709,34 @@ function planLandingPage(widgets: CatalogWidget[], extras: LayoutExtras): Planne
       "Proof",
       [
         row(
-          [55, 45],
+          [58, 42],
           [
             [
+              bannerIcon(widgets, FA.quote, NAVY, undefined, "left"),
               bodyText(
                 widgets,
-                "<p>“We recovered missed calls the first week. The front desk stayed with patients instead of the phone.”</p>",
+                "<p>“By far, they are the best VoIP provider that I have worked with. Great support. The longest I have ever sat on hold to talk to a tech was 30 seconds. You can’t ask for anything better.”</p>",
               ),
               primitive(widgets, "text", {
-                editor: `<p style="margin:0;display:flex;align-items:center;gap:10px"><img src="${AVATAR}" alt="" width="40" height="40" style="width:40px;height:40px;border-radius:50%" /> <strong>Jeff Falkner</strong> · Practice manager</p>`,
+                editor: `<p style="margin:0;display:flex;align-items:center;gap:10px"><img src="${AVATAR}" alt="" width="40" height="40" style="width:40px;height:40px;border-radius:50%" /> <strong style="color:${ACCENT}">Jeff Falkners</strong><br><span style="color:${MUTED}">Vetcor</span></p>`,
                 align: "left",
               }),
             ],
             [
-              heading(widgets, "312", { as: "h2", color: NAVY, px: 56 }),
-              heading(widgets, "Missed calls recovered", { as: "h3", color: ACCENT, px: 20 }),
-              bodyText(widgets, "<p>In the last 60 days by Axion customers.</p>"),
+              bannerIcon(widgets, FA.chart, ACCENT),
+              heading(widgets, "312", { as: "h2", color: ACCENT, px: 56, align: "center" }),
+              heading(widgets, "Missed Calls Recovered", { as: "h3", color: ACCENT, px: 18, align: "center" }),
+              bodyText(widgets, '<p style="text-align:center">in the last 90 days by Axion customers.</p>'),
             ],
           ],
-          { card: true, cardBg: [TAG_BG, WHITE], align: "center", gap: 28 },
+          {
+            card: true,
+            cardBg: [TAG_BG, TAG_BG],
+            cardBorder: ["none", "none"],
+            align: "center",
+            gap: 28,
+            columnAlign: ["stretch", "center"],
+          },
         ),
       ],
       { boxedWidth: 1180 },
@@ -739,26 +745,40 @@ function planLandingPage(widgets: CatalogWidget[], extras: LayoutExtras): Planne
       "content",
       "Compare",
       [
-        row([100], [[richTitle(widgets, `Axion Vs. ${mark("Others")}`, "h2", 32)]]),
+        row([100], [[richTitle(widgets, `${mark("Axion")} Vs. Others`, "h2", 32)]]),
         row(
-          [34, 33, 33],
+          [32, 36, 32],
           [
             [
               heading(widgets, "Feature", { as: "h4", color: MUTED, px: 14 }),
-              bodyText(
+              takeawayList(
                 widgets,
-                "<p>Unlimited users<br>Two-way texting<br>Live answer<br>After-hours coverage<br>Practice software sync<br>U.S. support</p>",
+                [
+                  "Unlimited Users",
+                  "Two-Way Texting",
+                  "After-Hours Routing",
+                  "Voicemail To Email/Text",
+                  "Transparent Pricing",
+                  "Built For Veterinary Practices",
+                ],
+                FA.circle,
+                INK,
               ),
             ],
             [
-              heading(widgets, "Axion", { as: "h4", color: WHITE, px: 14 }),
-              bodyText(widgets, "<p>Included<br>Included<br>Included<br>Included<br>Included<br>Included</p>", WHITE),
+              heading(widgets, "Axion Communications", { as: "h4", color: WHITE, px: 14, align: "center" }),
+              takeawayList(
+                widgets,
+                ["Yes", "Included", "Included", "Included", "Yes", "Yes"],
+                FA.check,
+                WHITE,
+              ),
             ],
             [
               heading(widgets, "Others", { as: "h4", color: NAVY, px: 14 }),
               bodyText(
                 widgets,
-                `<p style="color:${RED}">Limited / add-on<br>Limited<br>Not always<br>Not always<br>Extra fee<br>Offshore / mixed</p>`,
+                `<p style="color:${RED}">Limited / Add-On<br>Add-On<br>Add-On<br>Add-On<br>Not Always<br>General Practices</p>`,
                 RED,
               ),
             ],
@@ -791,9 +811,15 @@ function planLandingPage(widgets: CatalogWidget[], extras: LayoutExtras): Planne
           [48, 52],
           [
             [
-              heading(widgets, "Be the clinic that always answers", { as: "h2", color: WHITE, px: 32 }),
-              bodyText(widgets, "<p>Schedule a 15-minute walkthrough of routing, reminders, and the after-hours queue.</p>", "#e8eef4"),
-              goldButton(widgets, "Schedule A 15-Minute Demo", true),
+              heading(widgets, "Be The Clinic That", { as: "h2", color: WHITE, px: 32 }),
+              heading(widgets, "Always Answers.", { as: "h2", color: GOLD, px: 32 }),
+              bodyText(
+                widgets,
+                "<p>Cloud phone, automated reminders, and two-way texting in one platform—so every client reaches you and your team gets back to caring for patients.</p>",
+                "#e8eef4",
+              ),
+              goldButton(widgets, "Schedule a 15-Minute Demo", true, "left"),
+              bodyText(widgets, "<p>Need answers now? <strong>(855) 982-9466</strong></p>", WHITE),
             ],
             [
               primitive(widgets, "image", {
@@ -1187,6 +1213,24 @@ function heading(
   });
 }
 
+function numberBadge(widgets: CatalogWidget[], n: string, bg: string, fg: string): PlannedWidget {
+  return primitive(widgets, "heading", {
+    title: n,
+    header_size: "h4",
+    size: "small",
+    align: "center",
+    title_color: fg,
+    typography_typography: "custom",
+    typography_font_size: { unit: "px", size: 16, sizes: [] },
+    typography_font_weight: "800",
+    background_background: "classic",
+    background_color: bg,
+    border_radius: { unit: "px", top: "8", right: "8", bottom: "8", left: "8", isLinked: true },
+    _padding: { unit: "px", top: "8", right: "14", bottom: "8", left: "14", isLinked: true },
+    _margin: { unit: "px", top: "-28", right: "0", bottom: "8", left: "0", isLinked: false },
+  });
+}
+
 function mark(word: string, color = ACCENT): string {
   return `<span style="color:${color}">${word}</span>`;
 }
@@ -1316,22 +1360,37 @@ function landingFaq(widgets: CatalogWidget[]): PlannedWidget {
     {
       tab_title: "What does Axion cost?",
       tab_content:
-        "<p>Plans are based on call volume and seats. The 15-minute demo walks a clinic-sized setup — pricing is on the table, not a bait-and-switch.</p>",
+        "<p>You'll get the complete price list in your first conversation—every seat, tier, and fee, in writing. No quote walls, and no add-on fees that appear later. Want the comparison first? Send us your current bill for a free line-by-line analysis.</p>",
     },
     {
-      tab_title: "Does it work with our practice software?",
+      tab_title: "What's included, and what costs extra?",
+      tab_content:
+        "<p>Routing, reminders, two-way texting, and live answer are in the plan. The demo walks every line so nothing shows up later as an add-on.</p>",
+    },
+    {
+      tab_title: "How does Axion reduce no-shows?",
+      tab_content:
+        "<p>Two-way reminders, one-tap reschedule, and a wait list that fills the same-day gap instead of leaving an empty chair.</p>",
+    },
+    {
+      tab_title: "How fast is your support, really?",
+      tab_content:
+        "<p>Live U.S. support. Average answer time is about 7 seconds — the same team you get after you switch.</p>",
+    },
+    {
+      tab_title: "How long does it take to switch, and will we keep our number?",
+      tab_content:
+        "<p>Keep the numbers clients already know. Axion sits in front of the existing lines and the mobile app.</p>",
+    },
+    {
+      tab_title: "Who trains our team, including new hires?",
+      tab_content:
+        "<p>Onboarding covers the front desk and the floor. New hires get the same walkthrough without a second implementation fee.</p>",
+    },
+    {
+      tab_title: "Will Axion work with the software our practice already uses?",
       tab_content:
         "<p>Yes. Axion syncs with Avimark, Pulse, ezyVet, Impromed, and other common veterinary practice systems.</p>",
-    },
-    {
-      tab_title: "Do we need new phones?",
-      tab_content:
-        "<p>No. Keep the numbers clients already know. Axion sits in front of the existing lines and the mobile app.</p>",
-    },
-    {
-      tab_title: "What happens after hours?",
-      tab_content:
-        "<p>Live U.S. support answers, books, and escalates emergencies instead of sending callers to voicemail.</p>",
     },
   ];
   return {
@@ -1393,6 +1452,24 @@ function goldButton(
           icon_indent: { unit: "px", size: 8 },
         }
       : {}),
+    link: { url: "#", is_external: "", nofollow: "" },
+  });
+}
+
+function ghostButton(widgets: CatalogWidget[], text: string): PlannedWidget {
+  return primitive(widgets, "button", {
+    text,
+    size: "lg",
+    align: "left",
+    background_color: "#EEF2F6",
+    button_text_color: INK,
+    border_radius: { unit: "px", top: "40", right: "40", bottom: "40", left: "40", isLinked: true },
+    typography_typography: "custom",
+    typography_font_weight: "700",
+    typography_font_size: { unit: "px", size: 15 },
+    selected_icon: FA.play,
+    icon_align: "right",
+    icon_indent: { unit: "px", size: 8 },
     link: { url: "#", is_external: "", nofollow: "" },
   });
 }
