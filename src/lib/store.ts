@@ -16,7 +16,7 @@ export const WELCOME_TEXT = `I'm your WordPress plugin and Elementor template ag
 1. Site URL
 2. WordPress username
 3. Application password (Users → Profile → Application Passwords)
-4. Then drag a plugin zip, Elementor JSON, or a JPEG/PNG of a page design
+4. Then drag a plugin zip, Elementor JSON, or a JPEG/PNG/PDF of a page design
 
 I detect every Elementor widget on the connected site, then convert the design using those widgets. Addon widgets (Axion and others) are used first. Plugins install under WP Admin → Plugins. Templates land in Templates → Saved Templates.`;
 

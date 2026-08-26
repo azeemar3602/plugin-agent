@@ -12,6 +12,9 @@ const nextConfig: NextConfig = {
     ],
   },
   serverExternalPackages: ["archiver", "jpeg-js", "jszip", "pngjs"],
+  experimental: {
+    proxyClientMaxBodySize: "50mb",
+  },
   allowedDevOrigins: [
     "127.0.0.1",
     "localhost",

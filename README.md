@@ -32,7 +32,7 @@ If Windows SmartScreen appears, choose **More info → Run anyway**. The portabl
 3. Application password — Users → Profile → Application Passwords (not the login password)
 4. Files: plugin zip/folder, Elementor `.json`, and/or a JPEG, PNG, or PDF of a page design
 
-Then drag them in, use **Install on WordPress**, or click **Convert PDF**. PDFs are rasterized (every page stacked) then converted the same way as a JPEG. That needs Python with `pillow` and `pypdfium2` (`pip3 install -r requirements.txt`).
+Then drag them in, use **Install on WordPress**, or pick a PDF next to **Convert PDF**. Conversion starts as soon as you choose the file — the filename stays visible, and a green status bar shows progress (about a minute). PDFs are rasterized (every page stacked) then converted the same way as a JPEG. That needs Python with `pillow` and `pypdfium2` (`pip3 install -r requirements.txt`).
 
 A design file is turned into Elementor JSON from the layout in the mockup, using **widgets actually registered on the connected site**:
 

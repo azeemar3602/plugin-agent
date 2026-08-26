@@ -22,6 +22,23 @@ function pickLivePlugin(store: PublicStore): PluginRecord | undefined {
   return undefined;
 }
 
+function lastDesignCard(store: PublicStore) {
+  const messages = store.messages ?? [];
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const card = messages[index]?.card;
+    if (card?.kind === "design") return card;
+  }
+  return undefined;
+}
+
+function isDesignUpload(file: File): boolean {
+  return /\.(pdf|jpe?g|png|webp|json)$/i.test(file.name) || file.type === "application/pdf";
+}
+
+function fileNames(list: FileList | File[]): string {
+  return [...list].map((file) => file.name).join(", ");
+}
+
 function bindDirectoryInput(el: HTMLInputElement | null) {
   if (!el) return;
   el.setAttribute("webkitdirectory", "true");
@@ -41,6 +58,7 @@ export function AgentApp() {
   const [remoteWidgets, setRemoteWidgets] = useState<Array<{ type: string; title: string; custom?: boolean }>>([]);
   const [probe, setProbe] = useState<ProbeResult | null>(null);
   const [windowsInstaller, setWindowsInstaller] = useState(false);
+  const [workingOn, setWorkingOn] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
@@ -69,8 +87,17 @@ export function AgentApp() {
     if (files.length === 0 || busy.current) return;
     busy.current = true;
     setSending(true);
+    setLoading(false);
     setError(null);
     setNotice(null);
+    const names = fileNames(files);
+    const pdf = files.some((file) => /\.pdf$/i.test(file.name) || file.type === "application/pdf");
+    setWorkingOn(names);
+    setNotice(
+      pdf
+        ? `Reading ${names}. Rasterizing the PDF, then publishing to WordPress — leave this tab open.`
+        : `Reading ${names}. Converting and publishing to WordPress — leave this tab open.`,
+    );
     try {
       const body = new FormData();
       if (files.length === 1 && !files[0].webkitRelativePath) {
@@ -86,16 +113,23 @@ export function AgentApp() {
         headers: { Accept: "application/json" },
         body,
       });
-      const data = await response.json();
+      const data = (await response.json()) as PublicStore & { error?: string };
       if (!response.ok) throw new Error(data.error || "Upload failed.");
       setStore(data);
-      setNotice("Done. Check Plugins, Elementor templates, or download the generated JSON.");
+      const design = lastDesignCard(data);
+      setNotice(
+        design?.pageUrl
+          ? `Published ${design.title}. Open the live page from the card below.`
+          : "Done. Check Plugins, Elementor templates, or download the generated JSON.",
+      );
       await loadRemote();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed.");
+      setNotice(null);
     } finally {
       busy.current = false;
       setSending(false);
+      setWorkingOn(null);
     }
   }
 
@@ -117,11 +151,15 @@ export function AgentApp() {
     let cancelled = false;
     (async () => {
       try {
-        const response = await fetch("/api/state");
+        const response = await fetch("/api/state", {
+          cache: "no-store",
+          signal: AbortSignal.timeout(12000),
+        });
+        if (!response.ok) throw new Error(`state ${response.status}`);
         const data = (await response.json()) as PublicStore;
         if (!cancelled) setStore(data);
       } catch {
-        if (!cancelled) setError("Could not reach the agent.");
+        if (!cancelled) setError("Could not load chat history. You can still drop a JPEG or PDF.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -161,6 +199,7 @@ export function AgentApp() {
 
   const site = store.sites.find((item) => item.id === store.lastSiteId) ?? store.sites[0];
   const plugin = pickLivePlugin(store);
+  const lastDesign = lastDesignCard(store);
 
   async function submitUpload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -340,6 +379,26 @@ export function AgentApp() {
                 then drop templates again.
               </p>
             ) : null}
+            {lastDesign ? (
+              <div className="mt-4 border-t border-border/60 pt-3">
+                <p className="text-xs font-medium text-muted-foreground">Last converted page</p>
+                <p className="mt-1 text-sm font-medium">{lastDesign.title}</p>
+                {lastDesign.pageUrl ? (
+                  <a
+                    href={lastDesign.pageUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-1 inline-block text-xs text-primary underline-offset-2 hover:underline"
+                  >
+                    {lastDesign.pageUrl}
+                  </a>
+                ) : (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    JSON is ready — import it in Elementor Saved Templates.
+                  </p>
+                )}
+              </div>
+            ) : null}
             {remoteWidgets.length > 0 ? (
               <div className="mt-4 border-t border-border/60 pt-3">
                 <p className="text-xs font-medium text-muted-foreground">
@@ -403,6 +462,13 @@ export function AgentApp() {
                 name="files"
                 multiple
                 accept=".zip,.json,.php,.jpg,.jpeg,.png,.webp,.pdf,application/zip,application/json,image/jpeg,image/png,application/pdf"
+                onChange={(event) => {
+                  const files = event.currentTarget.files;
+                  if (!files?.length) return;
+                  if ([...files].some((file) => isDesignUpload(file))) {
+                    void uploadFileList(files);
+                  }
+                }}
                 className="min-w-0 flex-1 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:text-sm file:font-medium file:text-primary-foreground"
               />
               <button
@@ -413,32 +479,45 @@ export function AgentApp() {
                 Install on WordPress
               </button>
             </form>
-            <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <form
+              action="/api/upload"
+              method="post"
+              encType="multipart/form-data"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const input = pdfInputRef.current;
+                if (input?.files?.length) void uploadFileList(input.files);
+                else input?.click();
+              }}
+              className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center"
+            >
               <input
                 ref={pdfInputRef}
+                id="plugin-agent-pdf"
                 type="file"
+                name="file"
                 accept=".pdf,application/pdf"
-                className="sr-only"
                 onChange={(event) => {
                   if (event.currentTarget.files?.length) {
                     void uploadFileList(event.currentTarget.files);
-                    event.currentTarget.value = "";
                   }
                 }}
+                className="min-w-0 flex-1 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-muted file:px-3 file:py-2 file:text-sm file:font-medium"
               />
               <button
-                type="button"
+                type="submit"
                 disabled={sending}
-                onClick={() => pdfInputRef.current?.click()}
                 className={cn(buttonVariants({ size: "lg", variant: "outline" }), "h-11 px-4")}
               >
                 <FileText />
                 Convert PDF
               </button>
-              <p className="text-xs text-muted-foreground">
-                Multi-page PDFs are stacked into one page, then converted like a JPEG.
-              </p>
-            </div>
+            </form>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Pick the PDF here — conversion starts as soon as you choose the file. Multi-page PDFs
+              are stacked into one page, then converted like a JPEG. The filename stays visible;
+              wait for the green notice (about a minute).
+            </p>
             <form
               action="/api/upload"
               method="post"
@@ -465,7 +544,13 @@ export function AgentApp() {
             </form>
           </section>
 
-          {loading ? (
+          {workingOn ? (
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <LoaderCircle className="size-3.5 animate-spin" />
+              Converting {workingOn} — rasterizing, mapping widgets, and publishing…
+            </p>
+          ) : null}
+          {loading && store.messages.length === 0 ? (
             <p className="text-sm text-muted-foreground">Loading chat…</p>
           ) : (
             store.messages.map((message) => (
@@ -490,7 +575,9 @@ export function AgentApp() {
           {sending ? (
             <p className="flex items-center gap-2 text-sm text-muted-foreground">
               <LoaderCircle className="size-3.5 animate-spin" />
-              Working — reading files and talking to WordPress…
+              {workingOn
+                ? `Working on ${workingOn} — leave this tab open.`
+                : "Working — reading files and talking to WordPress…"}
             </p>
           ) : null}
           <div ref={bottomRef} />

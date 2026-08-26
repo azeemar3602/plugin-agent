@@ -185,14 +185,27 @@ async function processDesigns(designs: IncomingFile[]) {
     await mkdir(prepDir, { recursive: true });
     const sourceName = basenameOf(design).replace(/[^\w.-]+/g, "-") || "design";
     const sourcePath = path.join(prepDir, sourceName);
+    const isPdf =
+      isPdfFilename(sourceName) || design.buffer.subarray(0, 5).toString("utf8") === "%PDF-";
+    await mutateStore((current) => {
+      current.messages.push({
+        id: nid(),
+        role: "agent",
+        createdAt: nowIso(),
+        text: isPdf
+          ? `Got **${sourceName}**. Rasterizing the PDF, then converting to Elementor — stay on this page; it usually takes about a minute.`
+          : `Got **${sourceName}**. Mapping sections and converting to Elementor — stay on this page; it usually takes about a minute.`,
+      });
+    });
     await writeFile(sourcePath, design.buffer);
     let raster = design.buffer;
-    if (isPdfFilename(sourceName) || design.buffer.subarray(0, 5).toString("utf8") === "%PDF-") {
+    if (isPdf) {
       raster = await rasterizePdfToJpeg(design.buffer);
       await writeFile(path.join(prepDir, sourceName.replace(/\.pdf$/i, ".jpg") || "design.jpg"), raster);
     }
+    const rasterName = isPdf ? sourceName.replace(/\.pdf$/i, ".jpg") || "design.jpg" : sourceName;
     const analysis = await analyzeDesignFile(
-      isPdfFilename(sourceName) ? path.join(prepDir, sourceName.replace(/\.pdf$/i, ".jpg") || "design.jpg") : sourcePath,
+      isPdf ? path.join(prepDir, rasterName) : sourcePath,
       raster,
     );
     const ensured = await ensureGeneratedWidgets({
@@ -222,9 +235,7 @@ async function processDesigns(designs: IncomingFile[]) {
     if (site?.url && site.username && site.password) {
       try {
         const hosted = await hostDesignImages(site, json, {
-          relativePath: isPdfFilename(sourceName)
-            ? sourceName.replace(/\.pdf$/i, ".jpg") || "design.jpg"
-            : sourceName,
+          relativePath: rasterName,
           buffer: raster,
         });
         json = hosted.json;

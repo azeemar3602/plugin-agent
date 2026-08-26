@@ -2,6 +2,7 @@ import { ingestUpload, filesFromForm } from "@/lib/ingest";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+export const maxDuration = 300;
 
 function isBrowserNavigation(request: Request): boolean {
   const mode = request.headers.get("sec-fetch-mode");
