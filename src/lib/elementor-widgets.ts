@@ -94,6 +94,7 @@ const CATALOG: CatalogWidget[] = [
   { type: "icon-box", plugin: "elementor", role: "icon", label: "Icon box" },
   { type: "image-box", plugin: "elementor", role: "image", label: "Image box" },
   { type: "image-gallery", plugin: "elementor", role: "gallery", label: "Gallery" },
+  { type: "icon-list", plugin: "elementor", role: "takeaways", label: "Icon List" },
   { type: "accordion", plugin: "elementor", role: "faq", label: "Accordion" },
   { type: "toggle", plugin: "elementor", role: "faq", label: "Toggle" },
   { type: "testimonial", plugin: "elementor", role: "testimonial", label: "Testimonial" },
@@ -188,6 +189,7 @@ export function roleFromName(type: string, title = ""): WidgetRole {
   if (/\bform\b/.test(hay) && !/search/.test(hay)) return "form";
   if (/testimonial|review/.test(hay)) return "testimonial";
   if (/gallery|slides/.test(hay)) return "gallery";
+  if (/icon list|icon-list/.test(hay)) return "takeaways";
   if (hay === "heading" || /(^| )heading$/.test(hay)) return "heading";
   if (hay.includes("text editor") || hay === "text") return "text";
   if (hay === "button" || /(^| )button$/.test(hay)) return "button";
@@ -229,10 +231,11 @@ export function mergeRemoteWidgets(
     const plugin = addon
       ? item.plugin || existing?.plugin || "remote"
       : existing?.plugin || item.plugin || "elementor";
+    const named = roleFromName(item.type, item.title);
     byType.set(item.type, {
       type: item.type,
       plugin,
-      role: roleFromName(item.type, item.title),
+      role: named === "other" && existing?.role ? existing.role : named,
       label: item.title || item.type,
       source: "remote",
       custom: addon,

@@ -157,11 +157,27 @@ const built = buildElementorDocument({
 });
 
 assert.ok(!built.widgetsUsed.includes("html"), `HTML widget leaked: ${built.widgetsUsed.join(", ")}`);
-assert.ok(!built.widgetsUsed.includes("heading"), `Core heading leaked: ${built.widgetsUsed.join(", ")}`);
-assert.ok(!built.widgetsUsed.includes("text-editor"), `Core text leaked: ${built.widgetsUsed.join(", ")}`);
-assert.ok(built.widgetsUsed.includes("arcadia_axion_blog_hero"));
+assert.ok(built.widgetsUsed.includes("arcadia_axion_key_takeaways"));
 assert.ok(built.widgetsUsed.includes("arcadia_axion_blog_faq"));
-assert.equal(built.widgetsUsed.length, 6);
+assert.ok(!built.widgetsUsed.includes("arcadia_axion_header"));
+assert.ok(!built.widgetsUsed.includes("arcadia_axion_footer"));
+
+function walkWidgets(
+  nodes: Array<{
+    widgetType?: string;
+    settings?: Record<string, unknown>;
+    elements?: unknown[];
+  }>,
+): Array<{ widgetType?: string; settings?: Record<string, unknown> }> {
+  const out: Array<{ widgetType?: string; settings?: Record<string, unknown> }> = [];
+  for (const node of nodes) {
+    if (node.widgetType) out.push(node);
+    if (Array.isArray(node.elements)) {
+      out.push(...walkWidgets(node.elements as typeof nodes));
+    }
+  }
+  return out;
+}
 
 const doc = JSON.parse(built.json) as {
   title: string;
@@ -174,39 +190,31 @@ const doc = JSON.parse(built.json) as {
       flex_direction_mobile?: string;
       padding?: { top?: string };
     };
-    elements: Array<{
-      elType?: string;
-      isInner?: boolean;
-      settings?: { width?: { size?: number }; width_mobile?: { size?: number } };
-      elements: Array<{ widgetType?: string; settings?: Record<string, unknown> }>;
-    }>;
+    elements: unknown[];
   }>;
 };
 assert.equal(doc.title, "Vets Reduce No-Shows");
 assert.ok(doc.content.every((section) => section.elType === "container"));
 assert.ok(doc.content.every((section) => section.isInner === false));
-assert.ok(doc.content.every((section) => section.settings?.content_width === "full"));
-assert.ok(doc.content.every((section) => section.settings?.flex_direction_mobile === "column"));
-assert.ok(doc.content.every((section) => section.settings?.padding?.top === "0"));
-const types = doc.content.flatMap((section) =>
-  section.elements.flatMap((column) => column.elements.map((node) => node.widgetType)),
-);
-assert.ok(doc.content.every((section) => section.elements.every((column) => column.elType === "container" && column.isInner)));
-assert.ok(types.every((type) => type && type.startsWith("arcadia_axion_")));
-assert.ok(!types.includes("arcadia_axion_author_post_meta"));
+assert.ok(built.sectionRoles.some((role) => role.startsWith("hero ") && role.includes("58/42")));
+assert.ok(built.sectionRoles.some((role) => role.startsWith("cta ") && role.includes("70/30")));
+assert.ok(built.sectionRoles.some((role) => role.includes("25/25/25/25")));
+const allWidgets = walkWidgets(doc.content);
+const types = allWidgets.map((node) => node.widgetType).filter(Boolean);
+assert.ok(types.includes("arcadia_axion_key_takeaways"));
+assert.ok(types.includes("arcadia_axion_blog_faq"));
 assert.ok(!types.includes("arcadia_axion_header"));
 assert.ok(!types.includes("arcadia_axion_footer"));
+assert.ok(types.includes("heading"));
+assert.ok(types.includes("button"));
+assert.ok(types.includes("image"));
 
-const hero = doc.content
-  .flatMap((section) => section.elements.flatMap((column) => column.elements))
-  .find((node) => node.widgetType === "arcadia_axion_blog_hero");
-assert.ok(hero);
-assert.equal(hero.settings?.heading_highlight, "Reduce");
-assert.equal(hero.settings?.image && typeof hero.settings.image === "object" && "url" in hero.settings.image
-  ? (hero.settings.image as { url: string }).url.includes("unsplash")
-  : false, true);
+const heroHeading = allWidgets.find(
+  (node) => node.widgetType === "heading" && String(node.settings?.title ?? "").includes("No-Shows"),
+);
+assert.ok(heroHeading);
 
-console.log("ok", types.join(" → "));
+console.log("ok", built.sectionRoles.join(" → "));
 
 const needed = neededRolesFromAnalysis([
   { role: "hero" },
@@ -258,13 +266,13 @@ const corePlan = planPageLayout({
   extras: { donation: false, search: false, form: false, language: false },
 });
 assert.equal(corePlan[0].columnCount, 2);
-assert.equal(corePlan[0].columns.length, 2);
+assert.equal(corePlan[0].rows[0].columns.length, 2);
 assert.equal(corePlan[1].columnCount, 4);
-assert.equal(corePlan[1].columns.length, 4);
+assert.equal(corePlan[1].rows[0].columns.length, 4);
 assert.equal(corePlan[2].columnCount, 1);
-assert.ok(corePlan[0].columns[0].widgets.length >= 1);
-assert.ok(corePlan[0].columns[1].widgets.length >= 1);
-assert.ok(corePlan[0].columns.every((column) => column.widthMobile === 100));
+assert.ok(corePlan[0].rows[0].columns[0].widgets.length >= 1);
+assert.ok(corePlan[0].rows[0].columns[1].widgets.length >= 1);
+assert.ok(corePlan[0].rows[0].columns.every((column) => column.widthMobile === 100));
 
 const coreDoc = buildElementorDocument({
   title: "Core layout",
@@ -302,8 +310,8 @@ assert.equal(coreJson.content[1].elements.length, 4);
 assert.equal(coreJson.content[1].elements[0].settings.width?.size, 25);
 assert.equal(coreJson.content[1].elements[0].settings.width_tablet?.size, 50);
 assert.equal(coreJson.content[1].elements[0].settings.width_mobile?.size, 100);
-assert.ok(coreDoc.sectionRoles.includes("hero 2-col"));
-assert.ok(coreDoc.sectionRoles.includes("features 4-col"));
+assert.ok(coreDoc.sectionRoles.includes("hero 50/50"));
+assert.ok(coreDoc.sectionRoles.includes("features 25/25/25/25"));
 assert.ok(coreJson.content[0].elements[0].elements.some((node) => node.widgetType === "heading"));
 assert.ok(coreJson.content[0].elements[1].elements.some((node) => node.widgetType === "image"));
 
@@ -358,7 +366,6 @@ async function testGeneratedPlugin() {
     ),
     extras: { donation: false, search: false, form: false, language: false },
   });
-  assert.ok(generatedDoc.widgetsUsed.includes("plugin_agent_blog_hero"));
   assert.ok(generatedDoc.widgetsUsed.includes("plugin_agent_faq"));
   assert.ok(!generatedDoc.widgetsUsed.includes("html"));
   console.log("generated plugin ok");

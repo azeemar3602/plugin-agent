@@ -6,6 +6,7 @@ import {
   type DesignSection,
   type LayoutExtras,
   type PlannedColumn,
+  type PlannedRow,
   type PlannedSection,
 } from "./layout-plan";
 
@@ -90,8 +91,105 @@ function innerContainer(column: PlannedColumn, index: number): ElNode {
   };
 }
 
+function rowContainer(row: PlannedRow): ElNode {
+  const multi = row.columns.length > 1;
+  return {
+    id: eid(),
+    elType: "container",
+    isInner: true,
+    settings: {
+      _title: multi ? `${row.columns.length} columns` : "Row",
+      container_type: "flex",
+      content_width: "full",
+      width: { unit: "%", size: 100 },
+      flex_direction: "row",
+      flex_wrap: "wrap",
+      flex_align_items: "center",
+      flex_justify_content: multi ? "space-between" : "flex-start",
+      flex_gap: gap(multi ? 24 : 0),
+      flex_direction_tablet: row.columns.some((column) => column.widthTablet === 100) ? "column" : "row",
+      flex_wrap_tablet: "wrap",
+      flex_gap_tablet: gap(multi ? 20 : 0),
+      flex_direction_mobile: "column",
+      flex_wrap_mobile: "wrap",
+      flex_gap_mobile: gap(16),
+      padding: pad("0", "0", "0", "0"),
+    },
+    elements: row.columns.map((column, index) => innerContainer(column, index)),
+  };
+}
+
+function bannerWrap(section: PlannedSection, children: ElNode[]): ElNode {
+  const banner = section.banner!;
+  return {
+    id: eid(),
+    elType: "container",
+    isInner: true,
+    settings: {
+      _title: "Banner",
+      container_type: "flex",
+      content_width: "full",
+      width: { unit: "%", size: 100 },
+      flex_direction: "row",
+      flex_wrap: "wrap",
+      flex_align_items: "center",
+      flex_justify_content: "space-between",
+      flex_gap: gap(24),
+      flex_direction_tablet: "column",
+      flex_direction_mobile: "column",
+      flex_gap_mobile: gap(16),
+      background_background: "classic",
+      background_color: banner.color,
+      border_radius: {
+        unit: "px",
+        top: String(banner.radius),
+        right: String(banner.radius),
+        bottom: String(banner.radius),
+        left: String(banner.radius),
+        isLinked: true,
+      },
+      padding: pad("32", "36", "32", "36"),
+      padding_mobile: pad("22", "20", "22", "20"),
+    },
+    elements: children,
+  };
+}
+
+function sectionPadding(section: PlannedSection) {
+  if (section.analysisRole === "header") {
+    return {
+      desktop: pad("10", "24", "10", "24"),
+      tablet: pad("10", "20", "10", "20"),
+      mobile: pad("8", "16", "8", "16"),
+    };
+  }
+  if (section.fullBleed && section.analysisRole === "footer") {
+    return {
+      desktop: pad("56", "24", "28", "24"),
+      tablet: pad("40", "20", "20", "20"),
+      mobile: pad("32", "16", "16", "16"),
+    };
+  }
+  if (section.banner) {
+    return {
+      desktop: pad("12", "24", "12", "24"),
+      tablet: pad("12", "20", "12", "20"),
+      mobile: pad("12", "16", "12", "16"),
+    };
+  }
+  return {
+    desktop: pad("40", "24", "40", "24"),
+    tablet: pad("32", "20", "32", "20"),
+    mobile: pad("24", "16", "24", "16"),
+  };
+}
+
 function outerContainer(section: PlannedSection): ElNode {
-  const multi = section.columnCount > 1;
+  const rows = section.rows;
+  const nested = rows.length > 1 || Boolean(section.banner);
+  const rowNodes = rows.map((item) => (nested ? rowContainer(item) : item.columns.map((column, index) => innerContainer(column, index)))).flat();
+  const children = section.banner ? [bannerWrap(section, rowNodes)] : rowNodes;
+  const padding = sectionPadding(section);
   return {
     id: eid(),
     elType: "container",
@@ -100,25 +198,24 @@ function outerContainer(section: PlannedSection): ElNode {
       _title: section.label,
       container_type: "flex",
       content_width: section.fullBleed ? "full" : "boxed",
-      boxed_width: { unit: "px", size: 1180 },
-      flex_direction: "row",
+      boxed_width: { unit: "px", size: section.boxedWidth ?? 1180 },
+      flex_direction: nested ? "column" : "row",
       flex_wrap: "wrap",
       flex_align_items: "stretch",
-      flex_justify_content: multi ? "space-between" : "center",
-      flex_gap: gap(multi ? 24 : 0),
-      flex_direction_tablet: "row",
+      flex_justify_content: "center",
+      flex_gap: gap(nested ? 20 : section.columnCount > 1 ? 24 : 0),
+      flex_direction_tablet: nested ? "column" : "row",
       flex_wrap_tablet: "wrap",
-      flex_gap_tablet: gap(multi ? 20 : 0),
-      flex_direction_mobile: "column",
+      flex_direction_mobile: nested || section.columnCount > 1 ? "column" : "row",
       flex_wrap_mobile: "wrap",
       flex_gap_mobile: gap(16),
       background_background: "classic",
       background_color: section.bg,
-      padding: section.fullBleed ? pad("0", "0", "0", "0") : pad("48", "24", "48", "24"),
-      padding_tablet: section.fullBleed ? pad("0", "0", "0", "0") : pad("36", "20", "36", "20"),
-      padding_mobile: section.fullBleed ? pad("0", "0", "0", "0") : pad("28", "16", "28", "16"),
+      padding: padding.desktop,
+      padding_tablet: padding.tablet,
+      padding_mobile: padding.mobile,
     },
-    elements: section.columns.map((column, index) => innerContainer(column, index)),
+    elements: children,
   };
 }
 
