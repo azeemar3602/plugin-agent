@@ -226,12 +226,11 @@ const demoButton = allWidgets.find(
 assert.ok(demoButton);
 assert.equal(demoButton?.settings?.size, "lg");
 assert.ok(demoButton?.settings?.selected_icon);
-assert.equal((demoButton?.settings?.selected_icon as { library?: string })?.library, "svg");
+assert.equal((demoButton?.settings?.selected_icon as { library?: string })?.library, "fa-solid");
 
 const bannerBell = allWidgets.find((node) => node.widgetType === "icon");
 assert.ok(bannerBell);
-assert.equal((bannerBell?.settings?.selected_icon as { library?: string })?.library, "svg");
-assert.equal(bannerBell?.settings?.icon_type, "svg");
+assert.equal((bannerBell?.settings?.selected_icon as { library?: string })?.library, "fa-solid");
 
 const pageSettings = (JSON.parse(built.json) as { page_settings?: { background_image?: { url?: string } } }).page_settings;
 assert.ok(pageSettings?.background_image?.url?.startsWith("data:image/svg+xml"));
@@ -394,6 +393,11 @@ const gainChecks = landingNodes.find(
     JSON.stringify(node.settings?.icon_list ?? "").includes("Intelligent call routing"),
 );
 assert.ok(gainChecks);
+assert.equal((gainChecks.settings?.icon_list as Array<{ selected_icon?: { library?: string } }>)?.[0]?.selected_icon?.library, "fa-solid");
+const painIcon = landingNodes.find(
+  (node) => node.widgetType === "icon" && JSON.stringify(node.settings?.selected_icon ?? "").includes("fa-phone"),
+);
+assert.ok(painIcon);
 assert.ok(landingJson.includes("What does Axion cost?"));
 assert.ok(!landingJson.includes("9:40 AM Gap"));
 assert.ok(!landingJson.includes("How Can Vets Reduce"));

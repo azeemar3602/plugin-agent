@@ -5,7 +5,7 @@ import {
   planPageFromDetectedWidgets,
   settingsFromWidget,
 } from "./elementor-widgets";
-import { ICONS, ICON_IMGS, strokeIcon, type ElementorSvgIcon } from "./icons";
+import { FA, ICON_IMGS, type ElementorIcon } from "./icons";
 
 export type DesignSection = {
   role: string;
@@ -82,8 +82,8 @@ const TAG_BG = "#E8F4FB";
 const HERO_IMAGE = "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=1400&q=80";
 const AVATAR = "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=128&h=128&q=80";
 const PLACEHOLDER_IMAGE = "https://placehold.co/1200x640/png?text=Image";
-const PLACEHOLDER_ICON = ICONS.bell;
-const PLACEHOLDER_ICON_CIRCLE = ICONS.dot;
+const PLACEHOLDER_ICON = FA.bell;
+const PLACEHOLDER_ICON_CIRCLE = FA.circle;
 const ARTICLE_TITLE = "How Can Vets Reduce No-Shows At Their Clinic Effectively?";
 
 const TAKEAWAYS = [
@@ -273,19 +273,19 @@ function planLandingPage(widgets: CatalogWidget[], extras: LayoutExtras): Planne
   const pains = [
     {
       n: "1",
-      icon: strokeIcon("phone", RED),
+      icon: FA.phone,
       title: "Front desk slammed",
       copy: "Busy front desk, calls on hold, clients get frustrated and hang up.",
     },
     {
       n: "2",
-      icon: strokeIcon("calendar", RED),
+      icon: FA.calendar,
       title: "No-shows",
       copy: "Missed appointments hurt your schedule and your bottom line.",
     },
     {
       n: "3",
-      icon: strokeIcon("clock", RED),
+      icon: FA.clock,
       title: "After-hours emergencies",
       copy: "Calls after hours go unanswered when your team is unavailable.",
     },
@@ -293,7 +293,7 @@ function planLandingPage(widgets: CatalogWidget[], extras: LayoutExtras): Planne
   const gains = [
     {
       n: "1",
-      icon: strokeIcon("phone", ACCENT),
+      icon: FA.phone,
       title: "Never miss a call",
       bullets: ["Intelligent call routing", "Unlimited extensions", "Calls answered in seconds"],
       result: "More calls answered, more revenue captured.",
@@ -301,7 +301,7 @@ function planLandingPage(widgets: CatalogWidget[], extras: LayoutExtras): Planne
     },
     {
       n: "2",
-      icon: strokeIcon("calendar", ACCENT),
+      icon: FA.calendar,
       title: "Reduce no-shows",
       bullets: ["Automated text and email reminders", "Two-way texting", "Easy rescheduling"],
       result: "Fewer no-shows, healthier schedules.",
@@ -309,7 +309,7 @@ function planLandingPage(widgets: CatalogWidget[], extras: LayoutExtras): Planne
     },
     {
       n: "3",
-      icon: strokeIcon("clock", GOLD),
+      icon: FA.clock,
       title: "Handle after-hours",
       bullets: ["After-hours call routing", "Voicemail to text", "Emergency notifications"],
       result: "Happier clients, better outcomes.",
@@ -431,7 +431,7 @@ function planLandingPage(widgets: CatalogWidget[], extras: LayoutExtras): Planne
                 "Reduce no-shows",
                 "Delight clients",
                 "Cover after-hours",
-              ], ICONS.checkGreen),
+              ], FA.check),
               goldButton(widgets, "Book a Demo", true, "left"),
               primitive(widgets, "text", {
                 editor: `<p style="margin:8px 0 0;color:${MUTED}">15 minutes. No pressure.</p>`,
@@ -525,7 +525,7 @@ function planLandingPage(widgets: CatalogWidget[], extras: LayoutExtras): Planne
             takeawayList(
               widgets,
               item.bullets,
-              item.featured ? ICONS.checkWhite : ICONS.checkGreen,
+              FA.check,
               item.featured ? WHITE : INK,
             ),
             bodyText(
@@ -895,7 +895,7 @@ function planArticlePage(widgets: CatalogWidget[], _extras: LayoutExtras): Plann
         row(
           [12, 58, 30],
           [
-            [bannerIcon(widgets, ICONS.bell, "#111111", GOLD)],
+            [bannerIcon(widgets, FA.bell, "#111111", GOLD)],
             [
               heading(widgets, "Want fewer no-shows and a fuller schedule?", { as: "h3", color: WHITE, px: 24 }),
               bodyText(widgets, "<p>See how automated reminders and online booking can help your clinic.</p>", "#e8eef4"),
@@ -932,7 +932,7 @@ function planArticlePage(widgets: CatalogWidget[], _extras: LayoutExtras): Plann
         row(
           [12, 58, 30],
           [
-            [bannerIcon(widgets, ICONS.clipboard, WHITE, NAVY)],
+            [bannerIcon(widgets, FA.clipboard, WHITE, NAVY)],
             [
               heading(widgets, "10 Ways to Reduce No-Shows at Your Clinic", { as: "h3", color: NAVY, px: 24 }),
               bodyText(widgets, "<p>A practical checklist you can implement today.</p>", NAVY),
@@ -1095,14 +1095,14 @@ function authorLine(widgets: CatalogWidget[]): PlannedWidget {
 
 function bannerIcon(
   widgets: CatalogWidget[],
-  icon: ElementorSvgIcon,
+  icon: ElementorIcon,
   color: string,
   circle?: string,
   align: "left" | "center" | "right" = "center",
 ): PlannedWidget {
   return primitive(widgets, "icon", {
     selected_icon: icon,
-    icon_type: "svg",
+    icon_type: icon.library === "svg" ? "svg" : "icon",
     view: circle ? "stacked" : "default",
     shape: circle ? "circle" : "",
     primary_color: color,
@@ -1117,12 +1117,11 @@ function bannerIcon(
 function takeawayList(
   widgets: CatalogWidget[],
   items: string[] = TAKEAWAYS,
-  icon: ElementorSvgIcon = ICONS.dot,
+  icon: ElementorIcon = FA.circle,
   textColor?: string,
 ): PlannedWidget {
   const list = widgets.find((widget) => widget.type === "icon-list");
-  const checkGreen = icon === ICONS.checkGreen;
-  const checkWhite = icon === ICONS.checkWhite;
+  const check = icon.value === FA.check.value;
   if (list) {
     return {
       widget: list,
@@ -1133,9 +1132,9 @@ function takeawayList(
           link: { url: "", is_external: "", nofollow: "" },
         })),
         text_color: textColor ?? INK,
-        icon_color: checkWhite ? WHITE : checkGreen ? GREEN : INK,
+        icon_color: check ? (textColor === WHITE ? WHITE : GREEN) : INK,
         space_between: { unit: "px", size: 14 },
-        icon_size: { unit: "px", size: checkGreen || checkWhite ? 16 : 8 },
+        icon_size: { unit: "px", size: check ? 16 : 8 },
       },
     };
   }
@@ -1226,8 +1225,7 @@ function goldButton(
     typography_font_size: { unit: "px", size: 15 },
     ...(arrow
       ? {
-          selected_icon: ICONS.arrowDark,
-          icon_type: "svg",
+          selected_icon: FA.arrow,
           icon_align: "right",
           icon_indent: { unit: "px", size: 8 },
         }
@@ -1249,8 +1247,7 @@ function navyButton(widgets: CatalogWidget[], text: string, arrow = false): Plan
     typography_font_size: { unit: "px", size: 15 },
     ...(arrow
       ? {
-          selected_icon: ICONS.arrowLight,
-          icon_type: "svg",
+          selected_icon: FA.arrow,
           icon_align: "right",
           icon_indent: { unit: "px", size: 8 },
         }

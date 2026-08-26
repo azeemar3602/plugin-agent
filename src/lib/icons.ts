@@ -3,6 +3,25 @@ export type ElementorSvgIcon = {
   value: { url: string; id: string };
 };
 
+export type ElementorFaIcon = {
+  library: "fa-solid" | "fa-regular";
+  value: string;
+};
+
+export type ElementorIcon = ElementorSvgIcon | ElementorFaIcon;
+
+/** Font Awesome 5 names Elementor can render in Icon / Icon List / Button. */
+export const FA = {
+  phone: { library: "fa-solid" as const, value: "fas fa-phone-alt" },
+  calendar: { library: "fa-solid" as const, value: "fas fa-calendar-alt" },
+  clock: { library: "fa-solid" as const, value: "fas fa-clock" },
+  check: { library: "fa-solid" as const, value: "fas fa-check" },
+  arrow: { library: "fa-solid" as const, value: "fas fa-arrow-right" },
+  bell: { library: "fa-solid" as const, value: "fas fa-bell" },
+  clipboard: { library: "fa-solid" as const, value: "fas fa-clipboard-list" },
+  circle: { library: "fa-solid" as const, value: "fas fa-circle" },
+};
+
 function dataUri(svg: string): string {
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
