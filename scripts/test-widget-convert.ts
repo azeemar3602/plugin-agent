@@ -6,6 +6,10 @@ import path from "node:path";
 import { buildElementorDocument } from "../src/lib/elementor-builder";
 import { writeGeneratedPlugin } from "../src/lib/generate-widgets";
 import {
+  columnWidths,
+  planPageLayout,
+} from "../src/lib/layout-plan";
+import {
   availableWidgets,
   mergeRemoteWidgets,
   missingLayoutRoles,
@@ -162,16 +166,32 @@ assert.equal(built.widgetsUsed.length, 6);
 const doc = JSON.parse(built.json) as {
   title: string;
   content: Array<{
-    settings?: { layout?: string; padding?: { top?: string } };
-    elements: Array<{ elements: Array<{ widgetType?: string; settings?: Record<string, unknown> }> }>;
+    elType?: string;
+    isInner?: boolean;
+    settings?: {
+      layout?: string;
+      content_width?: string;
+      flex_direction_mobile?: string;
+      padding?: { top?: string };
+    };
+    elements: Array<{
+      elType?: string;
+      isInner?: boolean;
+      settings?: { width?: { size?: number }; width_mobile?: { size?: number } };
+      elements: Array<{ widgetType?: string; settings?: Record<string, unknown> }>;
+    }>;
   }>;
 };
 assert.equal(doc.title, "Vets Reduce No-Shows");
-assert.ok(doc.content.every((section) => section.settings?.layout === "full_width"));
+assert.ok(doc.content.every((section) => section.elType === "container"));
+assert.ok(doc.content.every((section) => section.isInner === false));
+assert.ok(doc.content.every((section) => section.settings?.content_width === "full"));
+assert.ok(doc.content.every((section) => section.settings?.flex_direction_mobile === "column"));
 assert.ok(doc.content.every((section) => section.settings?.padding?.top === "0"));
 const types = doc.content.flatMap((section) =>
   section.elements.flatMap((column) => column.elements.map((node) => node.widgetType)),
 );
+assert.ok(doc.content.every((section) => section.elements.every((column) => column.elType === "container" && column.isInner)));
 assert.ok(types.every((type) => type && type.startsWith("arcadia_axion_")));
 assert.ok(!types.includes("arcadia_axion_author_post_meta"));
 assert.ok(!types.includes("arcadia_axion_header"));
@@ -205,6 +225,87 @@ const coreOnly = mergeRemoteWidgets(availableWidgets(plugins), [
 ]);
 const missing = missingLayoutRoles(coreOnly, ["blogHero", "faq", "articleCta"]);
 assert.deepEqual(missing, ["blogHero", "faq", "articleCta"]);
+
+assert.deepEqual(columnWidths(1), [{ desktop: 100, tablet: 100, mobile: 100 }]);
+assert.deepEqual(columnWidths(2), [
+  { desktop: 50, tablet: 50, mobile: 100 },
+  { desktop: 50, tablet: 50, mobile: 100 },
+]);
+assert.deepEqual(columnWidths(4).map((col) => col.desktop), [25, 25, 25, 25]);
+assert.ok(columnWidths(4).every((col) => col.tablet === 50 && col.mobile === 100));
+
+const corePlugins = [{ file: "elementor/elementor.php", name: "Elementor", status: "active", version: "3" }];
+const coreWidgets = mergeRemoteWidgets(availableWidgets(corePlugins), [
+  { type: "heading", title: "Heading", custom: false, plugin: "elementor" },
+  { type: "text-editor", title: "Text Editor", custom: false, plugin: "elementor" },
+  { type: "button", title: "Button", custom: false, plugin: "elementor" },
+  { type: "image", title: "Image", custom: false, plugin: "elementor" },
+  { type: "icon", title: "Icon", custom: false, plugin: "elementor" },
+  { type: "icon-box", title: "Icon Box", custom: false, plugin: "elementor" },
+]);
+const corePlan = planPageLayout({
+  analysis: {
+    width: 1440,
+    height: 2400,
+    background: "#ffffff",
+    sections: [
+      { role: "hero", y0: 0, y1: 0.2, columns: 2, bg: "#f7f9fb", fg: "#111", imageHeavy: true },
+      { role: "features", y0: 0.2, y1: 0.45, columns: 4, bg: "#fff", fg: "#111", imageHeavy: false },
+      { role: "cta", y0: 0.45, y1: 0.6, columns: 1, bg: "#111", fg: "#fff", imageHeavy: false },
+    ],
+  },
+  widgets: coreWidgets,
+  extras: { donation: false, search: false, form: false, language: false },
+});
+assert.equal(corePlan[0].columnCount, 2);
+assert.equal(corePlan[0].columns.length, 2);
+assert.equal(corePlan[1].columnCount, 4);
+assert.equal(corePlan[1].columns.length, 4);
+assert.equal(corePlan[2].columnCount, 1);
+assert.ok(corePlan[0].columns[0].widgets.length >= 1);
+assert.ok(corePlan[0].columns[1].widgets.length >= 1);
+assert.ok(corePlan[0].columns.every((column) => column.widthMobile === 100));
+
+const coreDoc = buildElementorDocument({
+  title: "Core layout",
+  analysis: {
+    width: 1440,
+    height: 2400,
+    background: "#ffffff",
+    sections: [
+      { role: "hero", y0: 0, y1: 0.2, columns: 2, bg: "#f7f9fb", fg: "#111", imageHeavy: true },
+      { role: "features", y0: 0.2, y1: 0.45, columns: 4, bg: "#fff", fg: "#111", imageHeavy: false },
+    ],
+  },
+  widgets: coreWidgets,
+  extras: { donation: false, search: false, form: false, language: false },
+});
+const coreJson = JSON.parse(coreDoc.json) as {
+  content: Array<{
+    elType: string;
+    settings: { flex_direction_mobile?: string; content_width?: string };
+    elements: Array<{
+      elType: string;
+      isInner?: boolean;
+      settings: { width?: { size?: number }; width_tablet?: { size?: number }; width_mobile?: { size?: number } };
+      elements: Array<{ widgetType?: string }>;
+    }>;
+  }>;
+};
+assert.equal(coreJson.content[0].elType, "container");
+assert.equal(coreJson.content[0].settings.flex_direction_mobile, "column");
+assert.equal(coreJson.content[0].elements.length, 2);
+assert.ok(coreJson.content[0].elements.every((column) => column.isInner && column.elType === "container"));
+assert.equal(coreJson.content[0].elements[0].settings.width?.size, 50);
+assert.equal(coreJson.content[0].elements[0].settings.width_mobile?.size, 100);
+assert.equal(coreJson.content[1].elements.length, 4);
+assert.equal(coreJson.content[1].elements[0].settings.width?.size, 25);
+assert.equal(coreJson.content[1].elements[0].settings.width_tablet?.size, 50);
+assert.equal(coreJson.content[1].elements[0].settings.width_mobile?.size, 100);
+assert.ok(coreDoc.sectionRoles.includes("hero 2-col"));
+assert.ok(coreDoc.sectionRoles.includes("features 4-col"));
+assert.ok(coreJson.content[0].elements[0].elements.some((node) => node.widgetType === "heading"));
+assert.ok(coreJson.content[0].elements[1].elements.some((node) => node.widgetType === "image"));
 
 async function testGeneratedPlugin() {
   const tmp = await mkdtemp(path.join(os.tmpdir(), "pa-widgets-"));

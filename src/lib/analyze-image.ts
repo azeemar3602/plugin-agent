@@ -170,7 +170,7 @@ function columnCount(img: Raster, y0: number, y1: number): number {
   const sm = smooth(colStd, Math.max(5, Math.floor(width / 40)));
   const sorted = [...sm].sort((a, b) => a - b);
   const thresh = sorted[Math.max(0, Math.floor(sorted.length * 0.18))] ?? 0;
-  const minRun = Math.max(8, Math.floor(width / 30));
+  const minRun = Math.max(6, Math.floor(width / 40));
   const gutters: number[] = [];
   let run = 0;
   let start = 0;
@@ -180,14 +180,15 @@ function columnCount(img: Raster, y0: number, y1: number): number {
       run += 1;
     } else {
       const mid = Math.floor((start + i) / 2);
-      if (run >= minRun && mid > width * 0.18 && mid < width * 0.82) gutters.push(mid);
+      if (run >= minRun && mid > width * 0.1 && mid < width * 0.9) gutters.push(mid);
       run = 0;
     }
   }
   const kept: number[] = [];
   for (const g of gutters) {
-    if (!kept.length || Math.abs(g - kept[kept.length - 1]) > width * 0.18) kept.push(g);
+    if (!kept.length || Math.abs(g - kept[kept.length - 1]) > width * 0.12) kept.push(g);
   }
+  if (kept.length >= 3) return 4;
   if (kept.length >= 2) return 3;
   if (kept.length === 1) return 2;
   return 1;

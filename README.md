@@ -37,9 +37,10 @@ Then drag them in, or use **Install on WordPress**.
 A design file is turned into Elementor JSON from the layout in the mockup, using **widgets actually registered on the connected site**:
 
 1. The helper lists every Elementor widget (core + addons).
-2. Plugin Agent classifies them (header, hero, FAQ, CTA, footer, …).
-3. Dropping a JPEG/PNG maps the design onto those widgets. Addon widgets win over Elementor core.
-4. If the design needs a widget the site does not have, Plugin Agent **generates** a real Elementor widget plugin (`Plugin Agent Widgets`), installs it, and converts with those widgets. It does not drop HTML blocks as a substitute.
+2. Plugin Agent splits the mockup into **sections**, then counts **columns** in each section.
+3. It builds Elementor **containers** first (one outer container per section, inner containers per column), then drops widgets into those columns.
+4. Responsive settings are written in: desktop keeps the planned columns, tablet wraps to two where needed, mobile stacks to one column.
+5. Addon widgets win over Elementor core. If the design needs a widget the site does not have, Plugin Agent **generates** a real Elementor widget plugin (`Plugin Agent Widgets`), installs it, and converts with those widgets. It does not drop HTML blocks as a substitute.
 
 Images and icons stay as placeholders unless the widget already has default media.
 

@@ -123,21 +123,23 @@ def column_count(im) -> int:
     gutters = []
     run = 0
     start = 0
-    min_run = max(8, w // 30)
+    min_run = max(6, w // 40)
     for i, val in enumerate(sm):
         if val <= thresh:
             if run == 0:
                 start = i
             run += 1
         else:
-            if run >= min_run and 0.18 * w < (start + i) / 2 < 0.82 * w:
+            if run >= min_run and 0.10 * w < (start + i) / 2 < 0.90 * w:
                 gutters.append((start + i) // 2)
             run = 0
     # unique-ish gutters
     kept = []
     for g in gutters:
-        if not kept or abs(g - kept[-1]) > w * 0.18:
+        if not kept or abs(g - kept[-1]) > w * 0.12:
             kept.append(g)
+    if len(kept) >= 3:
+        return 4
     if len(kept) >= 2:
         return 3
     if len(kept) == 1:

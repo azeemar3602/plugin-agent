@@ -386,9 +386,10 @@ export function AgentApp() {
             </p>
             <p className="mt-2 text-xs leading-5 text-muted-foreground">
               Drop a plugin zip, Elementor JSON, and/or a JPEG, PNG, or PDF of a page design. The
-              agent lists every Elementor widget on this site, then maps the design onto those
-              widgets. If a needed widget is missing, it generates a real Elementor widget plugin,
-              installs it, and uses that — not an HTML block.
+              agent maps sections first, then the column count in each section, then builds
+              Elementor containers and drops widgets into those columns. Tablet keeps 2-up where
+              needed; mobile stacks to one column. If a needed widget is missing, it generates a
+              real Elementor widget plugin and uses that — not an HTML block.
             </p>
             <form
               action="/api/upload"

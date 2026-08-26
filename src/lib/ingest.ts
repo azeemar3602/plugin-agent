@@ -263,8 +263,8 @@ async function processDesigns(designs: IncomingFile[]) {
         id: nid(),
         role: "agent",
         text: imported
-          ? `Detected ${built.detectedWidgets.length} Elementor widgets on this site, then built **${built.title}** using those widgets: ${built.widgetsUsed.join(", ")}.${generatedNote}${pageUrl ? ` Live page: ${pageUrl}` : " Saved under Templates → Saved Templates."}`
-          : `Detected widgets, then built **${built.title}** (${built.sectionRoles.join(" → ")}). Widgets used: ${built.widgetsUsed.join(", ") || "none"}.${generatedNote}${importError ? ` Import skipped: ${importError}` : " Download the JSON and import it in Elementor."}`,
+          ? `Detected ${built.detectedWidgets.length} Elementor widgets on this site, mapped sections then columns (${built.sectionRoles.join(" → ")}), and built **${built.title}** in containers: ${built.widgetsUsed.join(", ")}.${generatedNote}${pageUrl ? ` Live page: ${pageUrl}` : " Saved under Templates → Saved Templates."}`
+          : `Mapped sections then columns (${built.sectionRoles.join(" → ")}), then built **${built.title}** in Elementor containers. Widgets used: ${built.widgetsUsed.join(", ") || "none"}.${generatedNote}${importError ? ` Import skipped: ${importError}` : " Download the JSON and import it in Elementor."}`,
         createdAt: nowIso(),
         card: {
           kind: "design",

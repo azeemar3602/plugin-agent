@@ -1,27 +1,15 @@
 import type { CatalogWidget } from "./elementor-widgets";
 import {
-  hasDetectedLayout,
-  pickWidget,
-  planPageFromDetectedWidgets,
-  settingsFromWidget,
-} from "./elementor-widgets";
+  layoutSummary,
+  planPageLayout,
+  type DesignAnalysis,
+  type DesignSection,
+  type LayoutExtras,
+  type PlannedColumn,
+  type PlannedSection,
+} from "./layout-plan";
 
-export type DesignSection = {
-  role: string;
-  y0: number;
-  y1: number;
-  columns: number;
-  bg: string;
-  fg: string;
-  imageHeavy: boolean;
-};
-
-export type DesignAnalysis = {
-  width: number;
-  height: number;
-  background: string;
-  sections: DesignSection[];
-};
+export type { DesignAnalysis, DesignSection };
 
 type ElNode = {
   id: string;
@@ -32,12 +20,16 @@ type ElNode = {
   elements: ElNode[];
 };
 
-const PLACEHOLDER_IMAGE = "https://placehold.co/1200x640/png?text=Image";
-const PLACEHOLDER_ICON = { value: "fas fa-star", library: "fa-solid" };
-const PLACEHOLDER_ICON_CIRCLE = { value: "fas fa-circle", library: "fa-solid" };
-
 function eid(): string {
   return Math.random().toString(16).slice(2, 9);
+}
+
+function gap(size: number): Record<string, unknown> {
+  return { column: String(size), row: String(size), isLinked: true, unit: "px", size };
+}
+
+function pad(top: string, right: string, bottom: string, left: string) {
+  return { unit: "px", top, right, bottom, left, isLinked: top === right && right === bottom && bottom === left };
 }
 
 function widgetNode(widget: CatalogWidget, settings: Record<string, unknown>): ElNode {
@@ -74,84 +66,60 @@ function normalizeRepeaterFields(settings: Record<string, unknown>): Record<stri
   return out;
 }
 
-function column(size: number, children: ElNode[], extra: Record<string, unknown> = {}): ElNode {
+function innerContainer(column: PlannedColumn, index: number): ElNode {
   return {
     id: eid(),
-    elType: "column",
-    settings: { _column_size: size, _inline_size: null, ...extra },
-    elements: children,
+    elType: "container",
+    isInner: true,
+    settings: {
+      _title: `Column ${index + 1}`,
+      container_type: "flex",
+      content_width: "full",
+      flex_direction: "column",
+      flex_align_items: "stretch",
+      flex_gap: gap(12),
+      flex_gap_mobile: gap(10),
+      flex_size: "none",
+      width: { unit: "%", size: column.width },
+      width_tablet: { unit: "%", size: column.widthTablet },
+      width_mobile: { unit: "%", size: column.widthMobile },
+      padding: pad("0", "0", "0", "0"),
+      padding_mobile: pad("0", "0", "0", "0"),
+    },
+    elements: column.widgets.map((item) => widgetNode(item.widget, item.settings)),
   };
 }
 
-function section(bg: string, columns: ElNode[], extra: Record<string, unknown> = {}): ElNode {
+function outerContainer(section: PlannedSection): ElNode {
+  const multi = section.columnCount > 1;
   return {
     id: eid(),
-    elType: "section",
+    elType: "container",
     isInner: false,
     settings: {
-      layout: "boxed",
-      gap: "default",
-      content_width: { unit: "%", size: 100 },
+      _title: section.label,
+      container_type: "flex",
+      content_width: section.fullBleed ? "full" : "boxed",
+      boxed_width: { unit: "px", size: 1180 },
+      flex_direction: "row",
+      flex_wrap: "wrap",
+      flex_align_items: "stretch",
+      flex_justify_content: multi ? "space-between" : "center",
+      flex_gap: gap(multi ? 24 : 0),
+      flex_direction_tablet: "row",
+      flex_wrap_tablet: "wrap",
+      flex_gap_tablet: gap(multi ? 20 : 0),
+      flex_direction_mobile: "column",
+      flex_wrap_mobile: "wrap",
+      flex_gap_mobile: gap(16),
       background_background: "classic",
-      background_color: bg,
-      padding: { unit: "px", top: "56", right: "24", bottom: "56", left: "24", isLinked: false },
-      ...extra,
+      background_color: section.bg,
+      padding: section.fullBleed ? pad("0", "0", "0", "0") : pad("48", "24", "48", "24"),
+      padding_tablet: section.fullBleed ? pad("0", "0", "0", "0") : pad("36", "20", "36", "20"),
+      padding_mobile: section.fullBleed ? pad("0", "0", "0", "0") : pad("28", "16", "28", "16"),
     },
-    elements: columns,
+    elements: section.columns.map((column, index) => innerContainer(column, index)),
   };
-}
-
-function addonSection(columns: ElNode[]): ElNode {
-  return section("#FFFFFF", columns, {
-    layout: "full_width",
-    gap: "no",
-    stretch_section: "section-stretched",
-    content_width: { unit: "%", size: 100 },
-    padding: { unit: "px", top: "0", right: "0", bottom: "0", left: "0", isLinked: true },
-  });
-}
-
-function heading(widgets: CatalogWidget[], title: string, color: string, size = "h2"): ElNode {
-  return widgetNode(pickWidget("heading", widgets), {
-    title,
-    header_size: size,
-    align: "center",
-    title_color: color,
-  });
-}
-
-function text(widgets: CatalogWidget[], html: string, color: string): ElNode {
-  return widgetNode(pickWidget("text", widgets), {
-    editor: `<p>${html}</p>`,
-    align: "center",
-    text_color: color,
-  });
-}
-
-function button(widgets: CatalogWidget[], label: string): ElNode {
-  return widgetNode(pickWidget("button", widgets), {
-    text: label,
-    align: "center",
-    link: { url: "#", is_external: "", nofollow: "" },
-  });
-}
-
-function image(widgets: CatalogWidget[]): ElNode {
-  return widgetNode(pickWidget("image", widgets), {
-    image: { url: PLACEHOLDER_IMAGE, id: "", alt: "Placeholder image", source: "url" },
-    image_size: "full",
-    align: "center",
-  });
-}
-
-function iconBox(widgets: CatalogWidget[], title: string, color: string): ElNode {
-  return widgetNode(pickWidget("icon", widgets), {
-    selected_icon: PLACEHOLDER_ICON,
-    title_text: title,
-    description_text: "Placeholder copy — replace with the real text from your design.",
-    title_color: color,
-    position: "top",
-  });
 }
 
 function collectTypes(nodes: ElNode[], into: Set<string>) {
@@ -161,146 +129,35 @@ function collectTypes(nodes: ElNode[], into: Set<string>) {
   }
 }
 
-function widgetsForSection(
-  sectionInfo: DesignSection,
-  index: number,
-  widgets: CatalogWidget[],
-  extras: { donation: boolean; search: boolean; form: boolean; language: boolean },
-): ElNode[] {
-  const color = sectionInfo.fg;
-  const cols = Math.min(4, Math.max(1, sectionInfo.columns));
-  const role = sectionInfo.role;
-
-  if (role === "hero") {
-    const left = [
-      heading(widgets, "Headline from your design", color, "h1"),
-      text(
-        widgets,
-        "Replace this with the hero copy from the JPEG/PDF. Images and icons are placeholders.",
-        color,
-      ),
-      button(widgets, "Primary action"),
-    ];
-    if (extras.search) {
-      const search = pickWidget("search", widgets);
-      left.push(
-        widgetNode(search, {
-          placeholder: "Search",
-          shortcode: search.shortcode,
-        }),
-      );
-    }
-    if (sectionInfo.imageHeavy || cols >= 2) {
-      return [
-        column(50, left),
-        column(50, [image(widgets)]),
-      ];
-    }
-    return [column(100, left)];
-  }
-
-  if (role === "features") {
-    const count = Math.max(3, cols);
-    const size = Math.floor(100 / count);
-    return Array.from({ length: count }, (_, i) =>
-      column(size, [iconBox(widgets, `Feature ${i + 1}`, color)]),
-    );
-  }
-
-  if (role === "split") {
-    return [
-      column(50, [
-        heading(widgets, "Section title", color, "h2"),
-        text(widgets, "Two-column layout detected in the mockup. Swap placeholders for real media.", color),
-        button(widgets, "Learn more"),
-      ]),
-      column(50, [image(widgets)]),
-    ];
-  }
-
-  if (role === "media" || sectionInfo.imageHeavy) {
-    return [
-      column(100, [
-        heading(widgets, "Visual section", color, "h2"),
-        widgetNode(pickWidget("gallery", widgets), {
-          gallery: [
-            { url: PLACEHOLDER_IMAGE, id: "" },
-            { url: "https://placehold.co/800x600/png?text=Image", id: "" },
-            { url: "https://placehold.co/800x600/png?text=Image", id: "" },
-          ],
-          gallery_layout: "grid",
-        }),
-      ]),
-    ];
-  }
-
-  if (role === "cta") {
-    const kids = [
-      heading(widgets, "Call to action", color, "h2"),
-      text(widgets, "Button and supporting line from the design — labels are placeholders.", color),
-      button(widgets, "Get started"),
-    ];
-    if (extras.form) {
-      const form = pickWidget("form", widgets);
-      kids.push(widgetNode(form, { shortcode: form.shortcode || "[contact-form]" }));
-    }
-    if (extras.donation && index > 0) {
-      const donation = pickWidget("donation", widgets);
-      kids.push(
-        widgetNode(donation, {
-          shortcode: donation.shortcode || "[give_form]",
-        }),
-      );
-    }
-    return [column(100, kids)];
-  }
-
-  if (role === "footer") {
-    const kids = [
-      heading(widgets, "Footer", color, "h4"),
-      text(widgets, "© Site name · Replace with footer links from the design.", color),
-    ];
-    if (extras.language) {
-      const lang = pickWidget("language", widgets);
-      kids.push(widgetNode(lang, { shortcode: lang.shortcode || "[polylang]" }));
-    }
-    kids.push(
-      widgetNode(pickWidget("icon", widgets), {
-        selected_icon: PLACEHOLDER_ICON_CIRCLE,
-        title_text: "Social",
-        description_text: "Placeholder icon.",
-      }),
-    );
-    return [column(100, kids)];
-  }
-
-  return [
-    column(100, [
-      heading(widgets, "Content section", color, "h2"),
-      text(widgets, "Layout band detected in the uploaded design. Drop in real copy when you edit in Elementor.", color),
-    ]),
-  ];
-}
-
 export function buildElementorDocument(options: {
   title: string;
   analysis: DesignAnalysis;
   widgets: CatalogWidget[];
-  extras: { donation: boolean; search: boolean; form: boolean; language: boolean };
+  extras: LayoutExtras;
 }): { json: string; widgetsUsed: string[]; sectionRoles: string[] } {
-  if (hasDetectedLayout(options.widgets)) {
-    return buildFromDetectedWidgets(options.title, options.analysis, options.widgets);
-  }
-  const content = options.analysis.sections.map((sec, index) =>
-    section(sec.bg, widgetsForSection(sec, index, options.widgets, options.extras)),
-  );
+  const plan = planPageLayout({
+    analysis: options.analysis,
+    widgets: options.widgets,
+    extras: options.extras,
+  });
+  const content = plan.map((section) => outerContainer(section));
   const used = new Set<string>();
   collectTypes(content, used);
+
+  if (content.length === 0) {
+    return {
+      json: JSON.stringify({ version: "0.4", title: options.title, type: "page", content: [] }, null, 2),
+      widgetsUsed: [],
+      sectionRoles: [],
+    };
+  }
+
   const document = {
     version: "0.4",
     title: options.title,
     type: "page",
     page_settings: {
+      hide_title: "yes",
       background_background: "classic",
       background_color: options.analysis.background,
     },
@@ -309,52 +166,6 @@ export function buildElementorDocument(options: {
   return {
     json: JSON.stringify(document, null, 2),
     widgetsUsed: [...used],
-    sectionRoles: options.analysis.sections.map((sec) => sec.role),
-  };
-}
-
-function buildFromDetectedWidgets(
-  title: string,
-  analysis: DesignAnalysis,
-  widgets: CatalogWidget[],
-): { json: string; widgetsUsed: string[]; sectionRoles: string[] } {
-  const plan = planPageFromDetectedWidgets(widgets);
-  const content: ElNode[] = plan.map((picked) =>
-    addonSection([
-      column(100, [widgetNode(picked, settingsFromWidget(picked))], {
-        padding: { unit: "px", top: "0", right: "0", bottom: "0", left: "0", isLinked: true },
-      }),
-    ]),
-  );
-  const roles = plan.map((picked) => `${picked.role}:${picked.type}`);
-
-  if (content.length === 0) {
-    return {
-      json: JSON.stringify({ version: "0.4", title, type: "page", content: [] }, null, 2),
-      widgetsUsed: [],
-      sectionRoles: [],
-    };
-  }
-
-  const used = new Set<string>();
-  collectTypes(content, used);
-  return {
-    json: JSON.stringify(
-      {
-        version: "0.4",
-        title,
-        type: "page",
-        page_settings: {
-          background_background: "classic",
-          background_color: analysis.background,
-          hide_title: "yes",
-        },
-        content,
-      },
-      null,
-      2,
-    ),
-    widgetsUsed: [...used],
-    sectionRoles: roles,
+    sectionRoles: layoutSummary(plan),
   };
 }

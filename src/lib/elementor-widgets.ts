@@ -188,10 +188,10 @@ export function roleFromName(type: string, title = ""): WidgetRole {
   if (/\bform\b/.test(hay) && !/search/.test(hay)) return "form";
   if (/testimonial|review/.test(hay)) return "testimonial";
   if (/gallery|slides/.test(hay)) return "gallery";
-  if (hay === "heading" || hay.endsWith(" heading")) return "heading";
+  if (hay === "heading" || /(^| )heading$/.test(hay)) return "heading";
   if (hay.includes("text editor") || hay === "text") return "text";
-  if (hay === "button") return "button";
-  if (hay === "image") return "image";
+  if (hay === "button" || /(^| )button$/.test(hay)) return "button";
+  if (hay === "image" || /(^| )image$/.test(hay)) return "image";
   if (hay.includes("search")) return "search";
   return "other";
 }
@@ -372,6 +372,7 @@ function scoreWidget(widget: CatalogWidget, role: WidgetRole): number {
   if (widget.type !== "html") score += 5;
   const type = widget.type.toLowerCase();
   if (type.startsWith("plugin_agent_")) score += 18;
+  if (widget.type === role || widget.type.replace(/-/g, "") === role) score += 8;
   if ((role === "header" || role === "footer") && /axion_(header|footer)/.test(type)) score -= 40;
   if (type.includes("blog_")) score += 6;
   if (role === "faq" && type.includes("blog_faq")) score += 12;
