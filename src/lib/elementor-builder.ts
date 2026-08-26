@@ -104,6 +104,15 @@ function innerContainer(column: PlannedColumn, index: number): ElNode {
 function cardShell(column: PlannedColumn, children: ElNode[]): ElNode {
   const firstIsImage = column.widgets[0]?.widget.type === "image";
   const body = firstIsImage && children.length > 1 ? [children[0], paddedStack(children.slice(1))] : children;
+  const radius = String(column.cardRadius ?? 16);
+  const padSize = column.cardPad ?? 22;
+  const border = column.cardBorder === "none" ? "" : "solid";
+  const borderColor =
+    column.cardBorder && column.cardBorder !== "none"
+      ? column.cardBorder
+      : column.cardBg && column.cardBg !== "#ffffff"
+        ? column.cardBg
+        : "#e6edf4";
   return {
     id: eid(),
     elType: "container",
@@ -113,24 +122,38 @@ function cardShell(column: PlannedColumn, children: ElNode[]): ElNode {
       container_type: "flex",
       content_width: "full",
       width: { unit: "%", size: 100 },
+      height: { unit: "%", size: 100 },
+      flex_grow: 1,
       flex_direction: "column",
       flex_align_items: "stretch",
       flex_gap: gap(0),
       background_background: "classic",
       background_color: column.cardBg ?? "#ffffff",
-      border_border: "solid",
-      border_width: { unit: "px", top: "1", right: "1", bottom: "1", left: "1", isLinked: true },
-      border_color: column.cardBg && column.cardBg !== "#ffffff" ? column.cardBg : "#e6edf4",
+      border_border: border,
+      border_width: border ? { unit: "px", top: "1", right: "1", bottom: "1", left: "1", isLinked: true } : undefined,
+      border_color: border ? borderColor : undefined,
       border_radius: {
         unit: "px",
-        top: "16",
-        right: "16",
-        bottom: "16",
-        left: "16",
+        top: radius,
+        right: radius,
+        bottom: radius,
+        left: radius,
         isLinked: true,
       },
-      overflow: "hidden",
-      padding: firstIsImage ? pad("0", "0", "12", "0") : pad("22", "20", "22", "20"),
+      overflow: "visible",
+      padding: firstIsImage ? pad("0", "0", "12", "0") : pad(String(padSize), "24", String(padSize), "24"),
+      ...(column.cardShadow
+        ? {
+            box_shadow_box_shadow_type: "yes",
+            box_shadow_box_shadow: {
+              horizontal: 0,
+              vertical: 18,
+              blur: 36,
+              spread: 0,
+              color: "rgba(4, 152, 218, 0.35)",
+            },
+          }
+        : {}),
     },
     elements: body,
   };

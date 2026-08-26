@@ -14,7 +14,7 @@ import {
   toPluginRecord,
 } from "./plugin";
 import { mutateStore, readStore, toPublicStore } from "./store";
-import type { PublicStore } from "./types";
+import type { PublicStore, Site } from "./types";
 import { saveUploadedTree } from "./upload-tree";
 import {
   createElementorPage,
@@ -22,7 +22,11 @@ import {
   importElementorFiles,
   listElementorWidgets,
   listPlugins,
+  uploadMediaFile,
 } from "./wordpress";
+import { cropLandingImages } from "./design-crops";
+import { LANDING_STOCK } from "./layout-plan";
+import { collectRemoteImageUrls, replaceRemoteImageUrls, type HostedMedia } from "./wp-media";
 
 type IncomingFile = {
   relativePath: string;
@@ -202,14 +206,19 @@ async function processDesigns(designs: IncomingFile[]) {
     let imported = false;
     let importError: string | undefined;
     let pageUrl: string | undefined;
+    let json = built.json;
+    let uploadedCount = 0;
     if (site?.url && site.username && site.password) {
       try {
+        const hosted = await hostDesignImages(site, json, design);
+        json = hosted.json;
+        uploadedCount = hosted.uploaded;
         await importElementorFiles({
           site,
-          files: [{ filename: `${built.id}.json`, buffer: Buffer.from(built.json) }],
+          files: [{ filename: `${built.id}.json`, buffer: Buffer.from(json) }],
         });
         imported = true;
-        const parsed = JSON.parse(built.json) as {
+        const parsed = JSON.parse(json) as {
           title?: string;
           content?: unknown[];
           page_settings?: Record<string, unknown>;
@@ -254,7 +263,7 @@ async function processDesigns(designs: IncomingFile[]) {
         siteUrl: site?.url,
         status: imported ? "success" : "error",
         message: imported
-          ? `Built Elementor JSON from the design and imported it (${built.widgetsUsed.join(", ")}).`
+          ? `Built Elementor JSON from the design and imported it (${built.widgetsUsed.join(", ")}).${uploadedCount ? ` Uploaded ${uploadedCount} images to Media.` : ""}`
           : importError || "Built Elementor JSON from the design.",
         files: [basenameOf(design)],
         createdAt: nowIso(),
@@ -263,7 +272,7 @@ async function processDesigns(designs: IncomingFile[]) {
         id: nid(),
         role: "agent",
         text: imported
-          ? `Detected ${built.detectedWidgets.length} Elementor widgets on this site, mapped sections then columns (${built.sectionRoles.join(" → ")}), and built **${built.title}** in containers: ${built.widgetsUsed.join(", ")}.${generatedNote}${pageUrl ? ` Live page: ${pageUrl}` : " Saved under Templates → Saved Templates."}`
+          ? `Detected ${built.detectedWidgets.length} Elementor widgets on this site, mapped sections then columns (${built.sectionRoles.join(" → ")}), and built **${built.title}** in containers: ${built.widgetsUsed.join(", ")}.${generatedNote}${uploadedCount ? ` Uploaded ${uploadedCount} images to the WordPress media library.` : ""}${pageUrl ? ` Live page: ${pageUrl}` : " Saved under Templates → Saved Templates."}`
           : `Mapped sections then columns (${built.sectionRoles.join(" → ")}), then built **${built.title}** in Elementor containers. Widgets used: ${built.widgetsUsed.join(", ") || "none"}.${generatedNote}${importError ? ` Import skipped: ${importError}` : " Download the JSON and import it in Elementor."}`,
         createdAt: nowIso(),
         card: {
@@ -338,5 +347,81 @@ async function importTemplateFiles(
       });
     });
     if (!allowPartial) throw error;
+  }
+}
+
+async function hostDesignImages(
+  site: Site,
+  json: string,
+  design: IncomingFile,
+): Promise<{ json: string; uploaded: number }> {
+  const hosted = new Map<string, HostedMedia>();
+  let uploaded = 0;
+  const sourceName = basenameOf(design).replace(/[^\w.-]+/g, "-") || "design.jpg";
+  try {
+    await uploadMediaFile(site, {
+      filename: sourceName,
+      buffer: design.buffer,
+      mime: /\.png$/i.test(sourceName) ? "image/png" : "image/jpeg",
+      title: sourceName,
+      alt: "Original design",
+    });
+    uploaded += 1;
+  } catch {
+    /* keep converting even if the source JPEG cannot be stored */
+  }
+
+  try {
+    for (const crop of cropLandingImages(design.buffer)) {
+      const media = await uploadMediaFile(site, {
+        filename: crop.filename,
+        buffer: crop.buffer,
+        mime: crop.mime,
+        title: crop.alt,
+        alt: crop.alt,
+      });
+      if (crop.key === "hero") hosted.set(LANDING_STOCK.hero, media);
+      if (crop.key === "dash") hosted.set(LANDING_STOCK.dash, media);
+      uploaded += 1;
+    }
+  } catch {
+    /* stock photos still work if a crop cannot be uploaded */
+  }
+
+  const parsed = JSON.parse(json) as unknown;
+  for (const url of collectRemoteImageUrls(parsed)) {
+    if (hosted.has(url)) continue;
+    try {
+      const response = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(30000) });
+      if (!response.ok) continue;
+      const buffer = Buffer.from(await response.arrayBuffer());
+      const mime = response.headers.get("content-type")?.split(";")[0] || "image/jpeg";
+      const media = await uploadMediaFile(site, {
+        filename: filenameFromUrl(url, mime),
+        buffer,
+        mime,
+        title: "Design image",
+      });
+      hosted.set(url, media);
+      uploaded += 1;
+    } catch {
+      /* leave the original URL in the template */
+    }
+  }
+
+  return {
+    json: JSON.stringify(replaceRemoteImageUrls(parsed, hosted)),
+    uploaded: uploaded,
+  };
+}
+
+function filenameFromUrl(url: string, mime: string): string {
+  const ext = mime.includes("png") ? "png" : mime.includes("webp") ? "webp" : "jpg";
+  try {
+    const base = new URL(url).pathname.split("/").filter(Boolean).pop() || "image";
+    if (/\.(jpe?g|png|webp|gif)$/i.test(base)) return base.replace(/[^\w.-]+/g, "-");
+    return `${base.replace(/[^\w.-]+/g, "-")}.${ext}`;
+  } catch {
+    return `image-${Date.now()}.${ext}`;
   }
 }

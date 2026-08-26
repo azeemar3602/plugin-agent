@@ -5,7 +5,7 @@ import {
   planPageFromDetectedWidgets,
   settingsFromWidget,
 } from "./elementor-widgets";
-import { ICONS, ICON_IMGS, strokeIcon, type ElementorSvgIcon } from "./icons";
+import { ICONS, ICON_IMGS, type ElementorSvgIcon } from "./icons";
 
 export type DesignSection = {
   role: string;
@@ -36,6 +36,10 @@ export type PlannedColumn = {
   widgets: PlannedWidget[];
   card?: boolean;
   cardBg?: string;
+  cardBorder?: string;
+  cardRadius?: number;
+  cardPad?: number;
+  cardShadow?: boolean;
   direction?: "row" | "column";
 };
 
@@ -174,14 +178,22 @@ export function planPageLayout(options: {
   return sections.map((section, index) => planPrimitiveSection(section, index, options.widgets, options.extras));
 }
 
-const RED = "#E24B4A";
-const GREEN = "#22C55E";
 const LANDING_HERO =
   "https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=1400&q=80";
 const LANDING_SUPPORT =
   "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&w=800&q=80";
 const LANDING_DASH =
   "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1400&q=80";
+const PAIN_BG = "#FFF5F5";
+const RED = "#E24B4A";
+const GREEN = "#22C55E";
+
+export const LANDING_STOCK = {
+  hero: LANDING_HERO,
+  support: LANDING_SUPPORT,
+  dash: LANDING_DASH,
+  avatar: AVATAR,
+};
 
 function looksLikeArticle(analysis: DesignAnalysis): boolean {
   const roles = new Set(analysis.sections.map((section) => section.role));
@@ -231,15 +243,28 @@ function pack(
 function row(
   percents: number[],
   fill: PlannedWidget[][],
-  opts?: { align?: PlannedRow["align"]; card?: boolean; cardBg?: string[]; gap?: number },
+  opts?: {
+    align?: PlannedRow["align"];
+    card?: boolean;
+    cardBg?: string[];
+    cardBorder?: Array<string | undefined>;
+    cardRadius?: number;
+    cardPad?: number;
+    cardShadow?: boolean[];
+    gap?: number;
+  },
 ): PlannedRow {
   const columns = columnsFromPercents(percents);
   fill.forEach((widgets, index) => {
-    if (columns[index]) {
-      columns[index].widgets = widgets;
-      if (opts?.card) columns[index].card = true;
-      if (opts?.cardBg?.[index]) columns[index].cardBg = opts.cardBg[index];
-    }
+    const column = columns[index];
+    if (!column) return;
+    column.widgets = widgets;
+    if (opts?.card) column.card = true;
+    if (opts?.cardBg?.[index]) column.cardBg = opts.cardBg[index];
+    if (opts?.cardBorder?.[index]) column.cardBorder = opts.cardBorder[index];
+    if (opts?.cardRadius != null) column.cardRadius = opts.cardRadius;
+    if (opts?.cardPad != null) column.cardPad = opts.cardPad;
+    if (opts?.cardShadow?.[index]) column.cardShadow = true;
   });
   return { columns, align: opts?.align, gap: opts?.gap };
 }
@@ -248,19 +273,19 @@ function planLandingPage(widgets: CatalogWidget[], extras: LayoutExtras): Planne
   const pains = [
     {
       n: "1",
-      icon: strokeIcon("phone", RED),
+      icon: ICON_IMGS.phoneRed,
       title: "Front desk slammed",
       copy: "Busy front desk, calls on hold, clients get frustrated and hang up.",
     },
     {
       n: "2",
-      icon: strokeIcon("calendar", RED),
+      icon: ICON_IMGS.calendarRed,
       title: "No-shows",
       copy: "Missed appointments hurt your schedule and your bottom line.",
     },
     {
       n: "3",
-      icon: strokeIcon("clock", RED),
+      icon: ICON_IMGS.clockRed,
       title: "After-hours emergencies",
       copy: "Calls after hours go unanswered when your team is unavailable.",
     },
@@ -268,23 +293,26 @@ function planLandingPage(widgets: CatalogWidget[], extras: LayoutExtras): Planne
   const gains = [
     {
       n: "1",
-      icon: strokeIcon("phone", ACCENT),
-      title: "Catch every call",
-      copy: "Live answer, overflow routing, and a record of every conversation.",
+      icon: ICON_IMGS.phoneBlue,
+      title: "Never miss a call",
+      bullets: ["Intelligent call routing", "Unlimited extensions", "Calls answered in seconds"],
+      result: "More calls answered, more revenue captured.",
       featured: false,
     },
     {
       n: "2",
-      icon: strokeIcon("calendar", ACCENT),
-      title: "Fill the schedule",
-      copy: "Two-way reminders and one-tap reschedule so cancellations become openings.",
+      icon: ICON_IMGS.calendarBlue,
+      title: "Reduce no-shows",
+      bullets: ["Automated text and email reminders", "Two-way texting", "Easy rescheduling"],
+      result: "Fewer no-shows, healthier schedules.",
       featured: false,
     },
     {
       n: "3",
-      icon: strokeIcon("clock", GOLD),
+      icon: ICON_IMGS.clockGold,
       title: "Handle after-hours",
-      copy: "U.S. support and a wait list that works while the clinic is closed.",
+      bullets: ["After-hours call routing", "Voicemail to text", "Emergency notifications"],
+      result: "Happier clients, better outcomes.",
       featured: true,
     },
   ];
@@ -398,12 +426,21 @@ function planLandingPage(widgets: CatalogWidget[], extras: LayoutExtras): Planne
                 widgets,
                 "<p>Missed calls cost veterinary practices time, clients, and revenue. Axion makes sure every call is answered, every time.</p>",
               ),
-              takeawayList(widgets, [
-                "Increase revenue from recovered calls",
-                "Reduce no-shows with two-way reminders",
-                "Delight clients who reach a person, not a recording",
-                "Cover after-hours without a voicemail dead end",
-              ], ICONS.checkGreen),
+              primitive(widgets, "text", {
+                editor: `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 28px;margin:16px 0 20px">${[
+                  "Increase revenue",
+                  "Reduce no-shows",
+                  "Delight clients",
+                  "Cover after-hours",
+                ]
+                  .map(
+                    (label) =>
+                      `<div style="display:flex;align-items:center;gap:8px;font-weight:700;color:${INK};font-size:15px">${ICON_IMGS.checkGreen}<span>${label}</span></div>`,
+                  )
+                  .join("")}</div>`,
+                align: "left",
+                text_color: INK,
+              }),
               goldButton(widgets, "Book a Demo", true, "left"),
               primitive(widgets, "text", {
                 editor: `<p style="margin:8px 0 0;color:${MUTED}">15 minutes. No pressure.</p>`,
@@ -451,16 +488,19 @@ function planLandingPage(widgets: CatalogWidget[], extras: LayoutExtras): Planne
       "features",
       "Pain points",
       [
-        row([100], [[richTitle(widgets, `Just A Few ${mark("Pain Points", RED)} We Solve`, "h2", 36)]]),
+        row([100], [[richTitle(widgets, `Just A Few ${mark("Pain Points", RED)} We Solve`, "h2", 40)]]),
         row(
-          [32, 32, 36],
-          pains.map((item) => [
-            heading(widgets, item.n, { as: "h3", color: RED, px: 28 }),
-            bannerIcon(widgets, item.icon, RED),
-            heading(widgets, item.title, { as: "h3", color: RED, px: 20 }),
-            bodyText(widgets, `<p>${item.copy}</p>`),
-          ]),
-          { card: true, cardBg: ["#FDECEC", "#FDECEC", "#FDECEC"], align: "stretch", gap: 20 },
+          [33, 33, 34],
+          pains.map((item) => [painCard(widgets, item)]),
+          {
+            card: true,
+            cardBg: [PAIN_BG, PAIN_BG, PAIN_BG],
+            cardBorder: ["none", "none", "none"],
+            cardRadius: 18,
+            cardPad: 28,
+            align: "stretch",
+            gap: 22,
+          },
         ),
       ],
       { boxedWidth: 1180 },
@@ -471,14 +511,18 @@ function planLandingPage(widgets: CatalogWidget[], extras: LayoutExtras): Planne
       [
         row([100], [[heading(widgets, "What you gain", { as: "h2", color: NAVY, px: 34 })]]),
         row(
-          [32, 32, 36],
-          gains.map((item) => [
-            heading(widgets, item.n, { as: "h3", color: item.featured ? GOLD : ACCENT, px: 28 }),
-            bannerIcon(widgets, item.icon, item.featured ? GOLD : ACCENT),
-            heading(widgets, item.title, { as: "h3", color: item.featured ? WHITE : NAVY, px: 20 }),
-            bodyText(widgets, `<p>${item.copy}</p>`, item.featured ? "#e8eef4" : INK),
-          ]),
-          { card: true, cardBg: ["#ffffff", "#ffffff", NAVY], align: "stretch", gap: 20 },
+          [33, 33, 34],
+          gains.map((item) => [gainCard(widgets, item)]),
+          {
+            card: true,
+            cardBg: [WHITE, WHITE, NAVY],
+            cardBorder: ["#E6EDF4", "#E6EDF4", NAVY],
+            cardRadius: 18,
+            cardPad: 36,
+            cardShadow: [false, false, true],
+            align: "stretch",
+            gap: 22,
+          },
         ),
         row(
           [40, 60],
@@ -994,6 +1038,50 @@ function heading(
     typography_font_weight: as === "h4" ? "700" : "800",
     typography_line_height: { unit: "em", size: as === "h1" ? 1.12 : 1.25 },
     ...(opts.extra ?? {}),
+  });
+}
+
+function painCard(
+  widgets: CatalogWidget[],
+  item: { n: string; icon: string; title: string; copy: string },
+): PlannedWidget {
+  return primitive(widgets, "text", {
+    editor: `<div style="margin:0">
+      <div style="font-size:42px;font-weight:800;line-height:1;color:${RED};margin:0 0 10px">${item.n}</div>
+      <div style="margin:0 0 12px">${item.icon}</div>
+      <div style="font-size:22px;font-weight:800;line-height:1.2;color:${RED};margin:0 0 10px">${item.title}</div>
+      <p style="margin:0;font-size:16px;line-height:1.55;color:${INK}">${item.copy}</p>
+    </div>`,
+    align: "left",
+    text_color: INK,
+  });
+}
+
+function gainCard(
+  widgets: CatalogWidget[],
+  item: { n: string; icon: string; title: string; bullets: string[]; result: string; featured: boolean },
+): PlannedWidget {
+  const titleColor = item.featured ? GOLD : ACCENT;
+  const textColor = item.featured ? WHITE : INK;
+  const check = item.featured ? ICON_IMGS.checkWhite : ICON_IMGS.checkGreen;
+  const tabBg = item.featured ? GOLD : NAVY;
+  const tabFg = item.featured ? NAVY : WHITE;
+  const bullets = item.bullets
+    .map(
+      (line) =>
+        `<div style="display:flex;align-items:flex-start;gap:8px;margin:0 0 8px;font-size:15px;line-height:1.4;color:${textColor}">${check}<span>${line}</span></div>`,
+    )
+    .join("");
+  return primitive(widgets, "text", {
+    editor: `<div style="margin:0;padding-top:8px">
+      <div style="width:42px;height:28px;border-radius:8px 8px 0 0;background:${tabBg};color:${tabFg};font-weight:800;font-size:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px">${item.n}</div>
+      <div style="text-align:center;margin:0 0 12px">${item.icon}</div>
+      <div style="text-align:center;font-size:20px;font-weight:800;color:${titleColor};margin:0 0 14px">${item.title}</div>
+      ${bullets}
+      <p style="margin:14px 0 0;font-size:14px;line-height:1.45;color:${textColor}"><span style="color:${titleColor};font-weight:700">Result:</span> ${item.result}</p>
+    </div>`,
+    align: "left",
+    text_color: textColor,
   });
 }
 

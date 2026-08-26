@@ -391,6 +391,37 @@ export async function findPageIdBySlug(site: Site, slug: string): Promise<number
   return typeof id === "number" ? id : undefined;
 }
 
+export async function uploadMediaFile(
+  site: Site,
+  file: { filename: string; buffer: Buffer; mime: string; title?: string; alt?: string },
+): Promise<{ id: number; url: string }> {
+  const form = new FormData();
+  form.append("file", new Blob([new Uint8Array(file.buffer)], { type: file.mime }), file.filename);
+  if (file.title) form.append("title", file.title);
+  if (file.alt) form.append("alt_text", file.alt);
+
+  const result = await tryUrls(site.url, "wp/v2/media", {
+    method: "POST",
+    headers: {
+      Authorization: authHeader(site),
+      Accept: "application/json",
+    },
+    body: form,
+    signal: AbortSignal.timeout(60000),
+  });
+
+  if (result.status === 401 || result.status === 403) {
+    throw new Error("WordPress rejected the media upload. Check the application password.");
+  }
+  if (!result.ok) {
+    throw new Error(wpErrorMessage(result.json, result.text, result.status));
+  }
+  const payload = result.json as { id?: number; source_url?: string; guid?: { rendered?: string } };
+  const url = payload.source_url || payload.guid?.rendered;
+  if (!payload.id || !url) throw new Error("WordPress did not return a media URL.");
+  return { id: payload.id, url };
+}
+
 function wpErrorMessage(json: unknown, text: string, status: number): string {
   if (json && typeof json === "object") {
     const rec = json as { message?: string };

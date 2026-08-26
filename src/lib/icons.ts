@@ -68,10 +68,27 @@ export const ICONS = {
   play: strokeIcon("play", "#002751"),
 };
 
+const CHECK_GREEN = strokeSvg(CHECK_PATH, "#22C55E", 2.4);
+const CHECK_WHITE = strokeSvg(CHECK_PATH, "#ffffff", 2.4);
+const PHONE_RED = strokeSvg(PHONE_PATH, "#E24B4A");
+const CALENDAR_RED = strokeSvg(CALENDAR_PATH, "#E24B4A");
+const CLOCK_RED = strokeSvg(CLOCK_PATH, "#E24B4A");
+const PHONE_BLUE = strokeSvg(PHONE_PATH, "#0498DA");
+const CALENDAR_BLUE = strokeSvg(CALENDAR_PATH, "#0498DA");
+const CLOCK_GOLD = strokeSvg(CLOCK_PATH, "#FFD800");
+
 export const ICON_IMGS = {
   clock: iconImg(CLOCK, 14),
   phone: iconImg(PHONE, 14),
   user: iconImg(USER, 13),
+  checkGreen: iconImg(CHECK_GREEN, 16),
+  checkWhite: iconImg(CHECK_WHITE, 16),
+  phoneRed: iconImg(PHONE_RED, 28),
+  calendarRed: iconImg(CALENDAR_RED, 28),
+  clockRed: iconImg(CLOCK_RED, 28),
+  phoneBlue: iconImg(PHONE_BLUE, 28),
+  calendarBlue: iconImg(CALENDAR_BLUE, 28),
+  clockGold: iconImg(CLOCK_GOLD, 28),
 };
 
 export const GRID_BACKGROUND = dataUri(
