@@ -20,6 +20,7 @@ export const FA = {
   bell: { library: "fa-solid" as const, value: "fas fa-bell" },
   clipboard: { library: "fa-solid" as const, value: "fas fa-clipboard-list" },
   circle: { library: "fa-solid" as const, value: "fas fa-circle" },
+  users: { library: "fa-solid" as const, value: "fas fa-users" },
 };
 
 function dataUri(svg: string): string {

@@ -41,6 +41,8 @@ export type PlannedColumn = {
   cardPad?: number;
   cardShadow?: boolean;
   direction?: "row" | "column";
+  /** Wrap a slice of widgets into an N-column grid (used for the hero check boxes). */
+  grid?: { from: number; count: number; columns: number };
 };
 
 export type PlannedRow = {
@@ -92,6 +94,16 @@ const TAKEAWAYS = [
   "Watch the 9:40 AM gap — that is where no-shows concentrate.",
   "Treat vet no-shows as a communication problem, not a client problem.",
 ];
+
+const HERO_CHECKS = [
+  { title: "Increase Revenue", copy: "Capture every opportunity" },
+  { title: "Reduce No-Shows", copy: "Automated reminders" },
+  { title: "Delight Clients", copy: "Fast, reliable responses" },
+  { title: "Cover After-Hours", copy: "Live answer when you are closed" },
+];
+
+const TRUSTED_BRANDS = ["OTTO", "COVETRUS", "AVIMARK", "PULSE", "EZYVET"];
+const INTEGRATION_BRANDS = ["OTTO", "COVETRUS", "AVIMARK", "PULSE", "EZYVET", "DAYSMART"];
 
 const RELATED = [
   {
@@ -412,44 +424,44 @@ function planLandingPage(widgets: CatalogWidget[], extras: LayoutExtras): Planne
       "hero",
       "Landing hero",
       [
-        row(
-          [52, 48],
-          [
+        (() => {
+          const heroRow = row(
+            [52, 48],
             [
-              primitive(widgets, "text", {
-                editor: `<p style="margin:0 0 8px;letter-spacing:.14em;font-size:12px;font-weight:700;color:${ACCENT}">BUILT FOR VETERINARY PRACTICES</p>`,
-                align: "left",
-                text_color: ACCENT,
-              }),
-              richTitle(widgets, `Never Miss Another ${mark("Client Call.")}`, "h1", 48),
-              bodyText(
-                widgets,
-                "<p>Missed calls cost veterinary practices time, clients, and revenue. Axion makes sure every call is answered, every time.</p>",
-              ),
-              takeawayList(widgets, [
-                "Increase revenue",
-                "Reduce no-shows",
-                "Delight clients",
-                "Cover after-hours",
-              ], FA.check),
-              goldButton(widgets, "Book a Demo", true, "left"),
-              primitive(widgets, "text", {
-                editor: `<p style="margin:8px 0 0;color:${MUTED}">15 minutes. No pressure.</p>`,
-                align: "left",
-                text_color: MUTED,
-              }),
+              [
+                heading(widgets, "BUILT FOR VETERINARY PRACTICES", {
+                  as: "h4",
+                  color: ACCENT,
+                  px: 12,
+                  extra: { typography_letter_spacing: { unit: "em", size: 0.14 } },
+                }),
+                richTitle(widgets, `Never Miss Another ${mark("Client Call.")}`, "h1", 48),
+                bodyText(
+                  widgets,
+                  "<p>Missed calls cost veterinary practices time, clients, and revenue. Axion makes sure every call is answered, every time.</p>",
+                ),
+                ...HERO_CHECKS.map((item) => iconBox(widgets, item.title, item.copy)),
+                goldButton(widgets, "Book a Demo", true, "left"),
+                primitive(widgets, "text", {
+                  editor: `<p style="margin:8px 0 0;color:${MUTED}">15 minutes. No pressure.</p>`,
+                  align: "left",
+                  text_color: MUTED,
+                }),
+              ],
+              [
+                primitive(widgets, "image", {
+                  image: { url: LANDING_HERO, id: "", alt: "Veterinarian with a golden retriever", source: "url" },
+                  image_size: "full",
+                  align: "center",
+                  border_radius: { unit: "px", top: "22", right: "22", bottom: "22", left: "22", isLinked: true },
+                }),
+              ],
             ],
-            [
-              primitive(widgets, "image", {
-                image: { url: LANDING_HERO, id: "", alt: "Veterinarian with a golden retriever", source: "url" },
-                image_size: "full",
-                align: "center",
-                border_radius: { unit: "px", top: "22", right: "22", bottom: "22", left: "22", isLinked: true },
-              }),
-            ],
-          ],
-          { align: "center", gap: 32 },
-        ),
+            { align: "center", gap: 32 },
+          );
+          heroRow.columns[0].grid = { from: 3, count: 4, columns: 2 };
+          return heroRow;
+        })(),
       ],
       { boxedWidth: 1180, pad: "hero" },
     ),
@@ -458,19 +470,19 @@ function planLandingPage(widgets: CatalogWidget[], extras: LayoutExtras): Planne
       "Trusted by",
       [
         row(
-          [38, 62],
+          [12, 28, 60],
           [
-            [heading(widgets, "Trusted by hundreds of veterinary practices", { as: "h3", color: WHITE, px: 20 })],
+            [bannerIcon(widgets, FA.users, GOLD)],
             [
-              primitive(widgets, "text", {
-                editor:
-                  '<p style="margin:0;color:#d7e4f2;letter-spacing:.04em;font-weight:700">OTTO &nbsp;·&nbsp; COVETRUS &nbsp;·&nbsp; AVIMARK &nbsp;·&nbsp; PULSE &nbsp;·&nbsp; EZYVET</p>',
-                align: "right",
-                text_color: "#d7e4f2",
-              }),
+              heading(widgets, "Trusted By", { as: "h4", color: WHITE, px: 13 }),
+              heading(widgets, "HUNDREDS OF", { as: "h3", color: GOLD, px: 22 }),
+              heading(widgets, "Veterinary Practices", { as: "h4", color: WHITE, px: 16 }),
+            ],
+            [
+              takeawayList(widgets, TRUSTED_BRANDS, FA.circle, "#d7e4f2", "inline"),
             ],
           ],
-          { align: "center" },
+          { align: "center", gap: 20 },
         ),
       ],
       { bg: NAVY, fullBleed: true, boxedWidth: 1180, pad: "tight" },
@@ -569,16 +581,7 @@ function planLandingPage(widgets: CatalogWidget[], extras: LayoutExtras): Planne
         row([100], [[richTitle(widgets, `Works Seamlessly With ${mark("Your Practice Software")}`, "h2", 32)]]),
         row(
           [100],
-          [
-            [
-              primitive(widgets, "text", {
-                editor:
-                  '<p style="margin:0;text-align:center;font-weight:700;letter-spacing:.06em;color:#5b6b7c">OTTO &nbsp;&nbsp; COVETRUS &nbsp;&nbsp; AVIMARK &nbsp;&nbsp; PULSE &nbsp;&nbsp; EZYVET &nbsp;&nbsp; DAYSMART</p>',
-                align: "center",
-                text_color: MUTED,
-              }),
-            ],
-          ],
+          [[takeawayList(widgets, INTEGRATION_BRANDS, FA.circle, MUTED, "inline")]],
         ),
       ],
       { boxedWidth: 1180 },
@@ -1114,11 +1117,48 @@ function bannerIcon(
   });
 }
 
+function iconBox(
+  widgets: CatalogWidget[],
+  title: string,
+  description: string,
+  icon: ElementorIcon = FA.check,
+): PlannedWidget {
+  const widget = widgets.find((item) => item.type === "icon-box");
+  if (!widget) {
+    return takeawayList(widgets, [`${title} — ${description}`], FA.check);
+  }
+  return {
+    widget,
+    settings: {
+      ...settingsFromWidget(widget),
+      selected_icon: icon,
+      title_text: title,
+      description_text: description,
+      title_size: "h4",
+      title_color: INK,
+      description_color: MUTED,
+      primary_color: WHITE,
+      hover_primary_color: WHITE,
+      icon_secondary_color: GREEN,
+      hover_secondary_color: GREEN,
+      view: "stacked",
+      shape: "circle",
+      position: "left",
+      icon_vertical_alignment: "top",
+      icon_size: { unit: "px", size: 14 },
+      icon_padding: { unit: "px", top: "10", right: "10", bottom: "10", left: "10", isLinked: true },
+      icon_space: { unit: "px", size: 12 },
+      title_bottom_space: { unit: "px", size: 2 },
+    },
+  };
+}
+
 function takeawayList(
   widgets: CatalogWidget[],
   items: string[] = TAKEAWAYS,
   icon: ElementorIcon = FA.circle,
   textColor?: string,
+  layout: "traditional" | "inline" = "traditional",
 ): PlannedWidget {
   const list = widgets.find((widget) => widget.type === "icon-list");
   const check = icon.value === FA.check.value;
@@ -1132,9 +1172,10 @@ function takeawayList(
           link: { url: "", is_external: "", nofollow: "" },
         })),
         text_color: textColor ?? INK,
-        icon_color: check ? (textColor === WHITE ? WHITE : GREEN) : INK,
-        space_between: { unit: "px", size: 14 },
+        icon_color: check ? (textColor === WHITE ? WHITE : GREEN) : textColor ?? INK,
+        space_between: { unit: "px", size: layout === "inline" ? 22 : 14 },
         icon_size: { unit: "px", size: check ? 16 : 8 },
+        view: layout,
       },
     };
   }

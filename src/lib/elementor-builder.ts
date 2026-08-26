@@ -70,7 +70,10 @@ function normalizeRepeaterFields(settings: Record<string, unknown>): Record<stri
 
 function innerContainer(column: PlannedColumn, index: number): ElNode {
   const direction = column.direction ?? "column";
-  const widgetNodes = column.widgets.map((item) => widgetNode(item.widget, item.settings));
+  const widgetNodes = withWidgetGrid(
+    column,
+    column.widgets.map((item) => widgetNode(item.widget, item.settings)),
+  );
   const children = column.card ? [cardShell(column, widgetNodes)] : widgetNodes;
   return {
     id: eid(),
@@ -99,6 +102,48 @@ function innerContainer(column: PlannedColumn, index: number): ElNode {
     },
     elements: children,
   };
+}
+
+function withWidgetGrid(column: PlannedColumn, nodes: ElNode[]): ElNode[] {
+  const grid = column.grid;
+  if (!grid || grid.count < 1 || grid.columns < 1) return nodes;
+  const from = Math.max(0, grid.from);
+  const slice = nodes.slice(from, from + grid.count);
+  if (slice.length === 0) return nodes;
+  const percent = Math.floor(100 / grid.columns);
+  const wrap: ElNode = {
+    id: eid(),
+    elType: "container",
+    isInner: true,
+    settings: {
+      _title: "Widget grid",
+      container_type: "flex",
+      content_width: "full",
+      width: { unit: "%", size: 100 },
+      flex_direction: "row",
+      flex_wrap: "wrap",
+      flex_align_items: "flex-start",
+      flex_gap: gap(8),
+      flex_direction_mobile: "column",
+      flex_wrap_mobile: "wrap",
+    },
+    elements: slice.map((node) => ({
+      id: eid(),
+      elType: "container",
+      isInner: true,
+      settings: {
+        _title: "Grid cell",
+        container_type: "flex",
+        content_width: "full",
+        width: { unit: "%", size: percent },
+        width_mobile: { unit: "%", size: 100 },
+        flex_direction: "column",
+        padding: pad("0", "8", "8", "0"),
+      },
+      elements: [node],
+    })),
+  };
+  return [...nodes.slice(0, from), wrap, ...nodes.slice(from + slice.length)];
 }
 
 function cardShell(column: PlannedColumn, children: ElNode[]): ElNode {

@@ -364,6 +364,7 @@ assert.equal(JSON.parse(landingDoc.json).title, "Never Miss Another Client Call"
 assert.ok(landingDoc.widgetsUsed.includes("heading"));
 assert.ok(landingDoc.widgetsUsed.includes("icon"));
 assert.ok(landingDoc.widgetsUsed.includes("icon-list"));
+assert.ok(landingDoc.widgetsUsed.includes("icon-box"));
 assert.ok(landingDoc.widgetsUsed.includes("button"));
 assert.ok(landingDoc.widgetsUsed.includes("image"));
 assert.ok(!landingDoc.widgetsUsed.includes("html"));
@@ -380,8 +381,22 @@ assert.ok(landingJson.includes("Front desk slammed"));
 assert.ok(landingJson.includes("Never miss a call"));
 assert.ok(landingJson.includes("Handle after-hours"));
 assert.ok(landingJson.includes("Intelligent call routing"));
+assert.ok(landingJson.includes("Increase Revenue"));
+assert.ok(landingJson.includes("Capture every opportunity"));
+assert.ok(landingJson.includes("HUNDREDS OF"));
+assert.ok(!landingJson.includes("OTTO &nbsp;·&nbsp; COVETRUS"));
 assert.ok(!landingJson.includes('width="28" height="28"'));
 const landingNodes = walkWidgets(JSON.parse(landingDoc.json).content);
+const heroBox = landingNodes.find(
+  (node) => node.widgetType === "icon-box" && String(node.settings?.title_text ?? "").includes("Increase Revenue"),
+);
+assert.ok(heroBox);
+const trustedList = landingNodes.find(
+  (node) =>
+    node.widgetType === "icon-list" && JSON.stringify(node.settings?.icon_list ?? "").includes("COVETRUS"),
+);
+assert.ok(trustedList);
+assert.equal(trustedList?.settings?.view, "inline");
 const painTitle = landingNodes.find((node) => String(node.settings?.title ?? "").includes("Front desk slammed"));
 assert.equal(painTitle?.widgetType, "heading");
 const painCopy = landingNodes.find((node) => String(node.settings?.editor ?? "").includes("Busy front desk"));
