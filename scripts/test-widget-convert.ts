@@ -363,6 +363,8 @@ const landingDoc = buildElementorDocument({
 });
 assert.equal(JSON.parse(landingDoc.json).title, "Never Miss Another Client Call");
 assert.ok(landingDoc.widgetsUsed.includes("heading"));
+assert.ok(landingDoc.widgetsUsed.includes("icon"));
+assert.ok(landingDoc.widgetsUsed.includes("icon-list"));
 assert.ok(landingDoc.widgetsUsed.includes("button"));
 assert.ok(landingDoc.widgetsUsed.includes("image"));
 assert.ok(!landingDoc.widgetsUsed.includes("html"));
@@ -379,6 +381,19 @@ assert.ok(landingJson.includes("Front desk slammed"));
 assert.ok(landingJson.includes("Never miss a call"));
 assert.ok(landingJson.includes("Handle after-hours"));
 assert.ok(landingJson.includes("Intelligent call routing"));
+assert.ok(!landingJson.includes('width="28" height="28"'));
+const landingNodes = walkWidgets(JSON.parse(landingDoc.json).content);
+const painTitle = landingNodes.find((node) => String(node.settings?.title ?? "").includes("Front desk slammed"));
+assert.equal(painTitle?.widgetType, "heading");
+const painCopy = landingNodes.find((node) => String(node.settings?.editor ?? "").includes("Busy front desk"));
+assert.equal(painCopy?.widgetType, "text-editor");
+assert.ok(!String(painCopy?.settings?.editor ?? "").includes("<img"));
+const gainChecks = landingNodes.find(
+  (node) =>
+    node.widgetType === "icon-list" &&
+    JSON.stringify(node.settings?.icon_list ?? "").includes("Intelligent call routing"),
+);
+assert.ok(gainChecks);
 assert.ok(landingJson.includes("What does Axion cost?"));
 assert.ok(!landingJson.includes("9:40 AM Gap"));
 assert.ok(!landingJson.includes("How Can Vets Reduce"));

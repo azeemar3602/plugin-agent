@@ -5,7 +5,7 @@ import {
   planPageFromDetectedWidgets,
   settingsFromWidget,
 } from "./elementor-widgets";
-import { ICONS, ICON_IMGS, type ElementorSvgIcon } from "./icons";
+import { ICONS, ICON_IMGS, strokeIcon, type ElementorSvgIcon } from "./icons";
 
 export type DesignSection = {
   role: string;
@@ -273,19 +273,19 @@ function planLandingPage(widgets: CatalogWidget[], extras: LayoutExtras): Planne
   const pains = [
     {
       n: "1",
-      icon: ICON_IMGS.phoneRed,
+      icon: strokeIcon("phone", RED),
       title: "Front desk slammed",
       copy: "Busy front desk, calls on hold, clients get frustrated and hang up.",
     },
     {
       n: "2",
-      icon: ICON_IMGS.calendarRed,
+      icon: strokeIcon("calendar", RED),
       title: "No-shows",
       copy: "Missed appointments hurt your schedule and your bottom line.",
     },
     {
       n: "3",
-      icon: ICON_IMGS.clockRed,
+      icon: strokeIcon("clock", RED),
       title: "After-hours emergencies",
       copy: "Calls after hours go unanswered when your team is unavailable.",
     },
@@ -293,7 +293,7 @@ function planLandingPage(widgets: CatalogWidget[], extras: LayoutExtras): Planne
   const gains = [
     {
       n: "1",
-      icon: ICON_IMGS.phoneBlue,
+      icon: strokeIcon("phone", ACCENT),
       title: "Never miss a call",
       bullets: ["Intelligent call routing", "Unlimited extensions", "Calls answered in seconds"],
       result: "More calls answered, more revenue captured.",
@@ -301,7 +301,7 @@ function planLandingPage(widgets: CatalogWidget[], extras: LayoutExtras): Planne
     },
     {
       n: "2",
-      icon: ICON_IMGS.calendarBlue,
+      icon: strokeIcon("calendar", ACCENT),
       title: "Reduce no-shows",
       bullets: ["Automated text and email reminders", "Two-way texting", "Easy rescheduling"],
       result: "Fewer no-shows, healthier schedules.",
@@ -309,7 +309,7 @@ function planLandingPage(widgets: CatalogWidget[], extras: LayoutExtras): Planne
     },
     {
       n: "3",
-      icon: ICON_IMGS.clockGold,
+      icon: strokeIcon("clock", GOLD),
       title: "Handle after-hours",
       bullets: ["After-hours call routing", "Voicemail to text", "Emergency notifications"],
       result: "Happier clients, better outcomes.",
@@ -426,21 +426,12 @@ function planLandingPage(widgets: CatalogWidget[], extras: LayoutExtras): Planne
                 widgets,
                 "<p>Missed calls cost veterinary practices time, clients, and revenue. Axion makes sure every call is answered, every time.</p>",
               ),
-              primitive(widgets, "text", {
-                editor: `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 28px;margin:16px 0 20px">${[
-                  "Increase revenue",
-                  "Reduce no-shows",
-                  "Delight clients",
-                  "Cover after-hours",
-                ]
-                  .map(
-                    (label) =>
-                      `<div style="display:flex;align-items:center;gap:8px;font-weight:700;color:${INK};font-size:15px">${ICON_IMGS.checkGreen}<span>${label}</span></div>`,
-                  )
-                  .join("")}</div>`,
-                align: "left",
-                text_color: INK,
-              }),
+              takeawayList(widgets, [
+                "Increase revenue",
+                "Reduce no-shows",
+                "Delight clients",
+                "Cover after-hours",
+              ], ICONS.checkGreen),
               goldButton(widgets, "Book a Demo", true, "left"),
               primitive(widgets, "text", {
                 editor: `<p style="margin:8px 0 0;color:${MUTED}">15 minutes. No pressure.</p>`,
@@ -491,7 +482,12 @@ function planLandingPage(widgets: CatalogWidget[], extras: LayoutExtras): Planne
         row([100], [[richTitle(widgets, `Just A Few ${mark("Pain Points", RED)} We Solve`, "h2", 40)]]),
         row(
           [33, 33, 34],
-          pains.map((item) => [painCard(widgets, item)]),
+          pains.map((item) => [
+            heading(widgets, item.n, { as: "h3", color: RED, px: 42 }),
+            bannerIcon(widgets, item.icon, RED, undefined, "left"),
+            heading(widgets, item.title, { as: "h3", color: RED, px: 22 }),
+            bodyText(widgets, `<p>${item.copy}</p>`),
+          ]),
           {
             card: true,
             cardBg: [PAIN_BG, PAIN_BG, PAIN_BG],
@@ -512,7 +508,32 @@ function planLandingPage(widgets: CatalogWidget[], extras: LayoutExtras): Planne
         row([100], [[heading(widgets, "What you gain", { as: "h2", color: NAVY, px: 34 })]]),
         row(
           [33, 33, 34],
-          gains.map((item) => [gainCard(widgets, item)]),
+          gains.map((item) => [
+            heading(widgets, item.n, {
+              as: "h3",
+              color: item.featured ? GOLD : ACCENT,
+              px: 28,
+              align: "center",
+            }),
+            bannerIcon(widgets, item.icon, item.featured ? GOLD : ACCENT),
+            heading(widgets, item.title, {
+              as: "h3",
+              color: item.featured ? WHITE : NAVY,
+              px: 20,
+              align: "center",
+            }),
+            takeawayList(
+              widgets,
+              item.bullets,
+              item.featured ? ICONS.checkWhite : ICONS.checkGreen,
+              item.featured ? WHITE : INK,
+            ),
+            bodyText(
+              widgets,
+              `<p><strong>Result:</strong> ${item.result}</p>`,
+              item.featured ? WHITE : INK,
+            ),
+          ]),
           {
             card: true,
             cardBg: [WHITE, WHITE, NAVY],
@@ -1041,50 +1062,6 @@ function heading(
   });
 }
 
-function painCard(
-  widgets: CatalogWidget[],
-  item: { n: string; icon: string; title: string; copy: string },
-): PlannedWidget {
-  return primitive(widgets, "text", {
-    editor: `<div style="margin:0">
-      <div style="font-size:42px;font-weight:800;line-height:1;color:${RED};margin:0 0 10px">${item.n}</div>
-      <div style="margin:0 0 12px">${item.icon}</div>
-      <div style="font-size:22px;font-weight:800;line-height:1.2;color:${RED};margin:0 0 10px">${item.title}</div>
-      <p style="margin:0;font-size:16px;line-height:1.55;color:${INK}">${item.copy}</p>
-    </div>`,
-    align: "left",
-    text_color: INK,
-  });
-}
-
-function gainCard(
-  widgets: CatalogWidget[],
-  item: { n: string; icon: string; title: string; bullets: string[]; result: string; featured: boolean },
-): PlannedWidget {
-  const titleColor = item.featured ? GOLD : ACCENT;
-  const textColor = item.featured ? WHITE : INK;
-  const check = item.featured ? ICON_IMGS.checkWhite : ICON_IMGS.checkGreen;
-  const tabBg = item.featured ? GOLD : NAVY;
-  const tabFg = item.featured ? NAVY : WHITE;
-  const bullets = item.bullets
-    .map(
-      (line) =>
-        `<div style="display:flex;align-items:flex-start;gap:8px;margin:0 0 8px;font-size:15px;line-height:1.4;color:${textColor}">${check}<span>${line}</span></div>`,
-    )
-    .join("");
-  return primitive(widgets, "text", {
-    editor: `<div style="margin:0;padding-top:8px">
-      <div style="width:42px;height:28px;border-radius:8px 8px 0 0;background:${tabBg};color:${tabFg};font-weight:800;font-size:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px">${item.n}</div>
-      <div style="text-align:center;margin:0 0 12px">${item.icon}</div>
-      <div style="text-align:center;font-size:20px;font-weight:800;color:${titleColor};margin:0 0 14px">${item.title}</div>
-      ${bullets}
-      <p style="margin:14px 0 0;font-size:14px;line-height:1.45;color:${textColor}"><span style="color:${titleColor};font-weight:700">Result:</span> ${item.result}</p>
-    </div>`,
-    align: "left",
-    text_color: textColor,
-  });
-}
-
 function mark(word: string, color = ACCENT): string {
   return `<span style="color:${color}">${word}</span>`;
 }
@@ -1121,6 +1098,7 @@ function bannerIcon(
   icon: ElementorSvgIcon,
   color: string,
   circle?: string,
+  align: "left" | "center" | "right" = "center",
 ): PlannedWidget {
   return primitive(widgets, "icon", {
     selected_icon: icon,
@@ -1132,7 +1110,7 @@ function bannerIcon(
     secondary_color: circle ?? color,
     hover_secondary_color: circle ?? color,
     size: { unit: "px", size: circle ? 20 : 28 },
-    align: "center",
+    align,
   });
 }
 
@@ -1140,9 +1118,11 @@ function takeawayList(
   widgets: CatalogWidget[],
   items: string[] = TAKEAWAYS,
   icon: ElementorSvgIcon = ICONS.dot,
+  textColor?: string,
 ): PlannedWidget {
   const list = widgets.find((widget) => widget.type === "icon-list");
-  const check = icon === ICONS.checkGreen || icon === ICONS.checkWhite;
+  const checkGreen = icon === ICONS.checkGreen;
+  const checkWhite = icon === ICONS.checkWhite;
   if (list) {
     return {
       widget: list,
@@ -1152,17 +1132,17 @@ function takeawayList(
           selected_icon: icon,
           link: { url: "", is_external: "", nofollow: "" },
         })),
-        text_color: INK,
-        icon_color: check ? GREEN : INK,
+        text_color: textColor ?? INK,
+        icon_color: checkWhite ? WHITE : checkGreen ? GREEN : INK,
         space_between: { unit: "px", size: 14 },
-        icon_size: { unit: "px", size: check ? 16 : 8 },
+        icon_size: { unit: "px", size: checkGreen || checkWhite ? 16 : 8 },
       },
     };
   }
   return primitive(widgets, "text", {
     editor: `<ul>${items.map((text) => `<li>${text}</li>`).join("")}</ul>`,
     align: "left",
-    text_color: INK,
+    text_color: textColor ?? INK,
   });
 }
 
