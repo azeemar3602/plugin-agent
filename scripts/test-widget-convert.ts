@@ -63,6 +63,9 @@ const remote: Array<{
       heading_before: { type: "text", default: "Vets" },
       heading_highlight: { type: "text", default: "Reduce" },
       heading_after: { type: "text", default: "No-Shows" },
+      image: { type: "media", default: { url: "", id: "", size: "" } },
+      image_source: { type: "select", options: ["dynamic", "custom"], default: "dynamic" },
+      items: { type: "repeater", default: [{}, {}, {}, {}] },
     },
   },
   {
@@ -117,7 +120,6 @@ assert.deepEqual(
   [
     "arcadia_axion_header",
     "arcadia_axion_blog_hero",
-    "arcadia_axion_author_post_meta",
     "arcadia_axion_key_takeaways",
     "arcadia_axion_article_cta_banner",
     "arcadia_axion_blog_faq",
@@ -151,16 +153,29 @@ assert.ok(!built.widgetsUsed.includes("heading"), `Core heading leaked: ${built.
 assert.ok(!built.widgetsUsed.includes("text-editor"), `Core text leaked: ${built.widgetsUsed.join(", ")}`);
 assert.ok(built.widgetsUsed.includes("arcadia_axion_blog_hero"));
 assert.ok(built.widgetsUsed.includes("arcadia_axion_blog_faq"));
-assert.equal(built.widgetsUsed.length, 9);
+assert.equal(built.widgetsUsed.length, 8);
 
 const doc = JSON.parse(built.json) as {
   title: string;
-  content: Array<{ elements: Array<{ elements: Array<{ widgetType?: string }> }> }>;
+  content: Array<{
+    settings?: { layout?: string; padding?: { top?: string } };
+    elements: Array<{ elements: Array<{ widgetType?: string; settings?: Record<string, unknown> }> }>;
+  }>;
 };
 assert.equal(doc.title, "Vets Reduce No-Shows");
+assert.ok(doc.content.every((section) => section.settings?.layout === "full_width"));
+assert.ok(doc.content.every((section) => section.settings?.padding?.top === "0"));
 const types = doc.content.flatMap((section) =>
   section.elements.flatMap((column) => column.elements.map((node) => node.widgetType)),
 );
 assert.ok(types.every((type) => type && type.startsWith("arcadia_axion_")));
+assert.ok(!types.includes("arcadia_axion_author_post_meta"));
+
+const hero = doc.content
+  .flatMap((section) => section.elements.flatMap((column) => column.elements))
+  .find((node) => node.widgetType === "arcadia_axion_blog_hero");
+assert.ok(hero);
+assert.equal(hero.settings?.heading_highlight, "Reduce");
+assert.ok(!hero.settings?.image, "empty image must not overwrite the widget default");
 
 console.log("ok", types.join(" → "));

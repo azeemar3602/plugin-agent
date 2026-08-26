@@ -57,16 +57,16 @@ function widgetNode(widget: CatalogWidget, settings: Record<string, unknown>): E
   };
 }
 
-function column(size: number, children: ElNode[]): ElNode {
+function column(size: number, children: ElNode[], extra: Record<string, unknown> = {}): ElNode {
   return {
     id: eid(),
     elType: "column",
-    settings: { _column_size: size, _inline_size: null },
+    settings: { _column_size: size, _inline_size: null, ...extra },
     elements: children,
   };
 }
 
-function section(bg: string, columns: ElNode[]): ElNode {
+function section(bg: string, columns: ElNode[], extra: Record<string, unknown> = {}): ElNode {
   return {
     id: eid(),
     elType: "section",
@@ -78,9 +78,20 @@ function section(bg: string, columns: ElNode[]): ElNode {
       background_background: "classic",
       background_color: bg,
       padding: { unit: "px", top: "56", right: "24", bottom: "56", left: "24", isLinked: false },
+      ...extra,
     },
     elements: columns,
   };
+}
+
+function addonSection(columns: ElNode[]): ElNode {
+  return section("#FFFFFF", columns, {
+    layout: "full_width",
+    gap: "no",
+    stretch_section: "section-stretched",
+    content_width: { unit: "%", size: 100 },
+    padding: { unit: "px", top: "0", right: "0", bottom: "0", left: "0", isLinked: true },
+  });
 }
 
 function heading(widgets: CatalogWidget[], title: string, color: string, size = "h2"): ElNode {
@@ -292,8 +303,10 @@ function buildFromDetectedWidgets(
 ): { json: string; widgetsUsed: string[]; sectionRoles: string[] } {
   const plan = planPageFromDetectedWidgets(widgets);
   const content: ElNode[] = plan.map((picked) =>
-    section(analysis.background || "#FFFFFF", [
-      column(100, [widgetNode(picked, settingsFromWidget(picked))]),
+    addonSection([
+      column(100, [widgetNode(picked, settingsFromWidget(picked))], {
+        padding: { unit: "px", top: "0", right: "0", bottom: "0", left: "0", isLinked: true },
+      }),
     ]),
   );
   const roles = plan.map((picked) => `${picked.role}:${picked.type}`);

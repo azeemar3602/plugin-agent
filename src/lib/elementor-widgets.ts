@@ -255,6 +255,10 @@ export function planPageFromDetectedWidgets(widgets: CatalogWidget[]): CatalogWi
     plan.push(picked);
     used.add(picked.type);
   }
+  const hasHero = plan.some((widget) => widget.role === "blogHero");
+  if (hasHero) {
+    return plan.filter((widget) => widget.role !== "authorMeta");
+  }
   return plan;
 }
 
@@ -345,14 +349,34 @@ export function settingsFromWidget(widget: CatalogWidget): Record<string, unknow
   const settings: Record<string, unknown> = {};
   const controls = widget.controls ?? {};
   for (const [key, control] of Object.entries(controls)) {
-    if (control.default !== undefined && control.default !== null && control.default !== "") {
-      settings[key] = control.default;
-    }
+    if (!isUsableDefault(control.default)) continue;
+    settings[key] = control.default;
   }
-  if (controls.title_source?.options?.includes("custom")) settings.title_source = "custom";
-  if (controls.image_source?.options?.includes("custom")) settings.image_source = "custom";
-  if (controls.author_source?.options?.includes("custom")) settings.author_source = "custom";
-  if (controls.content_source?.options?.includes("manual")) settings.content_source = "manual";
-  if (controls.split_layout?.options?.includes("columns")) settings.split_layout = "columns";
+  if (
+    (typeof settings.heading_before === "string" || typeof settings.heading_highlight === "string") &&
+    controls.title_source?.options?.includes("custom")
+  ) {
+    settings.title_source = "custom";
+  }
+  if (settings.items && controls.content_source?.options?.includes("manual")) {
+    settings.content_source = "manual";
+  }
+  if (controls.split_layout?.options?.includes("columns") && !settings.split_layout) {
+    settings.split_layout = "columns";
+  }
   return settings;
+}
+
+function isUsableDefault(value: unknown): boolean {
+  if (value === undefined || value === null || value === "") return false;
+  if (typeof value === "string" && value.trim().length < 2 && value.trim() !== "0") return false;
+  if (Array.isArray(value)) {
+    return value.some((item) => isUsableDefault(item));
+  }
+  if (typeof value === "object") {
+    const rec = value as Record<string, unknown>;
+    if ("url" in rec) return typeof rec.url === "string" && rec.url.trim().length > 0;
+    return Object.values(rec).some((item) => isUsableDefault(item));
+  }
+  return true;
 }
