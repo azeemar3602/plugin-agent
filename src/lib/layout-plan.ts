@@ -851,7 +851,18 @@ function primitive(
   role: WidgetRole,
   settings: Record<string, unknown>,
 ): PlannedWidget {
-  const widget = pickWidget(role, widgets);
+  const exactType =
+    role === "heading"
+      ? "heading"
+      : role === "text"
+        ? "text-editor"
+        : role === "button"
+          ? "button"
+          : role === "image"
+            ? "image"
+            : undefined;
+  const widget =
+    (exactType ? widgets.find((item) => item.type === exactType) : undefined) ?? pickWidget(role, widgets);
   return { widget, settings: { ...settingsFromWidget(widget), ...settings } };
 }
 
