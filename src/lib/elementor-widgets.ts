@@ -327,6 +327,8 @@ function scoreWidget(widget: CatalogWidget, role: WidgetRole): number {
   if (isAddonWidget(widget)) score += 25;
   if (widget.type !== "html") score += 5;
   const type = widget.type.toLowerCase();
+  if (type.includes("axion_")) score += 8;
+  if (type.includes("blog_")) score += 6;
   if (role === "faq" && type.includes("blog_faq")) score += 12;
   if (role === "blogHero" && type.includes("blog_hero")) score += 12;
   if (role === "relatedPosts" && (type.includes("blog_related") || type.includes("related_posts"))) score += 12;
@@ -334,7 +336,7 @@ function scoreWidget(widget: CatalogWidget, role: WidgetRole): number {
   if (role === "takeaways" && type.includes("takeaway")) score += 12;
   if (role === "header" && type.includes("header")) score += 12;
   if (role === "footer" && type.includes("footer")) score += 12;
-  if (role === "authorMeta" && type.includes("author")) score += 12;
+  if (role === "authorMeta" && (type.includes("post_meta") || type.includes("author_post"))) score += 12;
   if (role === "downloadCta" && type.includes("download")) score += 12;
   return score;
 }

@@ -30,6 +30,24 @@ const remote: Array<{
   { type: "text-editor", title: "Text Editor", custom: false, plugin: "elementor" },
   { type: "html", title: "HTML", custom: false, plugin: "elementor" },
   {
+    type: "arcadia_author_box",
+    title: "Author Box",
+    custom: true,
+    plugin: "arcadia-elementor-addons",
+  },
+  {
+    type: "arcadia_axion_vet_hero",
+    title: "Axion Vet Hero",
+    custom: true,
+    plugin: "arcadia-elementor-addons",
+  },
+  {
+    type: "arcadia_axion_faq",
+    title: "Axion FAQ",
+    custom: true,
+    plugin: "arcadia-elementor-addons",
+  },
+  {
     type: "arcadia_axion_header",
     title: "Axion Header",
     custom: true,
