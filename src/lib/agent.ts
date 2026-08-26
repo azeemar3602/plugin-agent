@@ -91,7 +91,7 @@ export async function pushPluginNow(): Promise<AgentResult> {
   return { store: toPublicStore(store), replies };
 }
 
-async function runAgent(store: Store, text: string): Promise<ChatMessage[]> {
+export async function runAgent(store: Store, text: string): Promise<ChatMessage[]> {
   const lower = text.toLowerCase();
 
   if (isHelp(lower) && !extractUrl(text) && !extractPath(text)) {
@@ -106,19 +106,10 @@ async function runAgent(store: Store, text: string): Promise<ChatMessage[]> {
       ask: url ? "username" : "url",
     };
     if (url) {
-      const known = store.sites.find((item) => item.url === store.pending?.url);
+      const known = findSite(store, store.pending.url);
       if (known) {
-        store.pending.username = known.username;
-        store.pending.password = known.password;
-        store.lastSiteId = known.id;
-        store.pending.ask = undefined;
-        return [
-          say(
-            `Switched to **${known.label}**. Drop a plugin or Elementor templates — they install on this site.`,
-            [],
-            { kind: "site", site: toPublicSite(known) },
-          ),
-        ];
+        rememberSite(store, known);
+        return connectedIdleReply(store, known);
       }
       return [say(`Got ${store.pending.url}. What's the WordPress username for this site?`)];
     }
@@ -128,51 +119,14 @@ async function runAgent(store: Store, text: string): Promise<ChatMessage[]> {
   const pending: PendingTask = store.pending ?? { goal: inferGoal(text, store) };
   const previousUrl = pending.url;
   const slots = extractSlots(text, pending.ask);
-  const commanded = /\b(install|update|sync|deploy|push|pack|zip|upload|connect)\b/i.test(text);
-
-  if (
-    !store.pending &&
-    !slots.url &&
-    !slots.path &&
-    !slots.username &&
-    !slots.password &&
-    !commanded
-  ) {
-    const known = store.sites.find((item) => item.id === store.lastSiteId) ?? store.sites[0];
-    if (known) {
-      store.pending = {
-        goal: "update",
-        url: known.url,
-        username: known.username,
-        password: known.password,
-      };
-      const lastDesign = [...store.messages]
-        .reverse()
-        .find((message) => message.card?.kind === "design");
-      const design = lastDesign?.card?.kind === "design" ? lastDesign.card : undefined;
-      if (design?.pageUrl) {
-        return [
-          say(
-            `You're already connected to **${known.label}**. **${design.title}** is live at ${design.pageUrl}. You don't need to paste the site URL again — drop another JPEG only if you want a new page.`,
-          ),
-        ];
-      }
-      return [
-        say(
-          `You're already connected to **${known.label}**. Drop a JPEG, plugin zip, or Elementor JSON. You don't need to paste the site URL again.`,
-        ),
-      ];
-    }
-    store.pending = { goal: "install", ask: "url" };
-    return [say("What's the WordPress site URL?")];
-  }
+  const commanded = isInstallCommand(text);
 
   if (slots.url) {
     const nextUrl = normalizeMaybeUrl(slots.url);
     if (previousUrl && previousUrl !== nextUrl) {
-      const known = store.sites.find((item) => item.url === nextUrl);
-      pending.username = known?.username;
-      pending.password = known?.password;
+      const switched = findSite(store, nextUrl);
+      pending.username = switched?.username;
+      pending.password = switched?.password;
     }
     pending.url = nextUrl;
   }
@@ -182,6 +136,40 @@ async function runAgent(store: Store, text: string): Promise<ChatMessage[]> {
   pending.goal = inferGoal(text, store, pending.goal);
 
   fillFromMemory(store, pending);
+
+  const known = findSite(store, pending.url);
+  if (known) rememberSite(store, known);
+
+  if (!commanded && !slots.path && !slots.password && isPageStatus(lower) && known) {
+    store.pending = {
+      goal: "update",
+      url: known.url,
+      username: known.username,
+      password: known.password,
+    };
+    return pageStatusReply(store, known);
+  }
+
+  const idle =
+    !commanded &&
+    !slots.path &&
+    !slots.password &&
+    (!slots.username || Boolean(known)) &&
+    (!slots.url || Boolean(known));
+
+  if (idle) {
+    if (known) {
+      store.pending = {
+        goal: "update",
+        url: known.url,
+        username: known.username,
+        password: known.password,
+      };
+      return connectedIdleReply(store, known);
+    }
+    store.pending = { goal: "install", ask: "url" };
+    return [say("What's the WordPress site URL? Example: `https://yoursite.com`")];
+  }
 
   const ask = nextAsk(pending);
   pending.ask = ask;
@@ -202,14 +190,13 @@ async function runAgent(store: Store, text: string): Promise<ChatMessage[]> {
       password: pending.password!,
     });
     pending.ask = undefined;
-    store.pending = pending;
-    return [
-      say(
-        `Connected **${site.label}**. Drop a plugin zip or Elementor JSON to install on this site. For another website, click **Add site** or paste its URL.`,
-        [],
-        { kind: "site", site: toPublicSite(site) },
-      ),
-    ];
+    store.pending = {
+      goal: "update",
+      url: site.url,
+      username: site.username,
+      password: site.password,
+    };
+    return connectedIdleReply(store, site);
   }
 
   return deployNow(store, pending);
@@ -227,20 +214,95 @@ function inferGoal(text: string, _store: Store, fallback: AgentGoal = "install")
   return fallback;
 }
 
+function isInstallCommand(text: string): boolean {
+  return /\b(install|update|sync|deploy|push|pack|zip|upload|connect)\b/i.test(text);
+}
+
+function isPageStatus(lower: string): boolean {
+  if (/\b(new page|page is done|is (the )?page done|is it done|where('s| is) the (page|url|link))\b/.test(lower)) {
+    return true;
+  }
+  return (
+    /\b(page|landing|design)\b/.test(lower) &&
+    /\b(done|ready|live|finished|complete|status|url|link)\b/.test(lower)
+  );
+}
+
+function lastDesign(store: Store) {
+  for (let index = store.messages.length - 1; index >= 0; index -= 1) {
+    const card = store.messages[index]?.card;
+    if (card?.kind === "design") return card;
+  }
+  return undefined;
+}
+
+function findSite(store: Store, url?: string): Site | undefined {
+  if (!url) {
+    return store.sites.find((item) => item.id === store.lastSiteId) ?? store.sites[0];
+  }
+  const normalized = normalizeMaybeUrl(url);
+  const exact = store.sites.find((item) => item.url === normalized || item.url === url);
+  if (exact) return exact;
+  try {
+    const host = new URL(normalized).host;
+    return store.sites.find((item) => {
+      try {
+        return new URL(item.url).host === host;
+      } catch {
+        return false;
+      }
+    });
+  } catch {
+    return undefined;
+  }
+}
+
+function rememberSite(store: Store, site: Site) {
+  store.lastSiteId = site.id;
+  store.pending = {
+    goal: store.pending?.goal ?? "update",
+    path: store.pending?.path,
+    ask: store.pending?.ask,
+    url: site.url,
+    username: site.username,
+    password: site.password,
+  };
+}
+
+function connectedIdleReply(store: Store, site: Site): ChatMessage[] {
+  const design = lastDesign(store);
+  const parts = [`You're on **${site.label}**.`];
+  if (design?.pageUrl) {
+    parts.push(`**${design.title}** is live at ${design.pageUrl}.`);
+    parts.push("Drop a JPEG only if you want another page — you don't need to paste the site URL again.");
+  } else {
+    parts.push("Drop a JPEG to convert a page, or a plugin zip / Elementor JSON. You don't need to paste the site URL again.");
+  }
+  return [say(parts.join(" "), [], { kind: "site", site: toPublicSite(site) })];
+}
+
+function pageStatusReply(store: Store, site: Site): ChatMessage[] {
+  const design = lastDesign(store);
+  if (design?.pageUrl) {
+    return [
+      say(
+        `Yes — **${design.title}** is already live at ${design.pageUrl}. Plugin Agent converted it on **${site.label}**. Drop another JPEG only if you want a new page.`,
+      ),
+    ];
+  }
+  return [
+    say(
+      `No converted page in this session yet. Drop a JPEG onto this window and I'll build it on **${site.label}**.`,
+    ),
+  ];
+}
+
 function fillFromMemory(store: Store, pending: PendingTask) {
-  if (!pending.url && store.lastSiteId) {
-    const site = store.sites.find((item) => item.id === store.lastSiteId) ?? store.sites[0];
-    if (site) {
-      pending.url = site.url;
-      pending.username = pending.username || site.username;
-      pending.password = pending.password || site.password;
-    }
-  } else if (pending.url) {
-    const site = store.sites.find((item) => item.url === pending.url);
-    if (site) {
-      pending.username = pending.username || site.username;
-      pending.password = pending.password || site.password;
-    }
+  const site = findSite(store, pending.url);
+  if (site) {
+    pending.url = site.url;
+    pending.username = pending.username || site.username;
+    pending.password = pending.password || site.password;
   }
 
   // Never reuse the last plugin just because a new site was connected.
@@ -698,10 +760,10 @@ function isNewSiteCommand(lower: string): boolean {
 
 function helpText(): string {
   return [
-    "I can connect more than one WordPress site. Use **Add site**, or paste the second site URL.",
-    "Each site needs its own username and application password.",
-    "Then drag a plugin zip and/or Elementor JSON — they install on the site selected in the header.",
-    "Plugin Agent Helper must be installed (once) on each site.",
+    "This window is already aimed at the WordPress site in the header. You do not need to paste the URL again.",
+    "Drop a JPEG/PNG of a page design to convert it to Elementor and publish it.",
+    "Drop a plugin zip or Elementor JSON to install those on the same site.",
+    "Use **Add site** only when you want a different WordPress website.",
   ].join("\n");
 }
 

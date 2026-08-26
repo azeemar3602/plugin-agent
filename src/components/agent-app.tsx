@@ -488,7 +488,7 @@ export function AgentApp() {
             type="text"
             autoComplete="off"
             disabled={sending}
-            placeholder="Message the agent"
+            placeholder="Ask about the last page, or drop a JPEG"
             className="h-11 min-w-0 flex-1 rounded-xl border border-input bg-input/30 px-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
           />
           <button
