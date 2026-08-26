@@ -1,0 +1,1777 @@
+{
+  "version": "0.4",
+  "title": "How Can Vets Reduce No-Shows At Their Clinic Effectively?",
+  "type": "page",
+  "page_settings": {
+    "background_background": "classic",
+    "background_color": "#FFFFFF",
+    "hide_title": "yes"
+  },
+  "content": [
+    {
+      "id": "ax000005",
+      "elType": "section",
+      "isInner": false,
+      "settings": {
+        "layout": "full_width",
+        "gap": "no",
+        "content_width": {
+          "unit": "%",
+          "size": 100
+        },
+        "background_background": "classic",
+        "background_color": "#FFFFFF",
+        "padding": {
+          "unit": "px",
+          "top": "10",
+          "right": "40",
+          "bottom": "10",
+          "left": "40",
+          "isLinked": false
+        }
+      },
+      "elements": [
+        {
+          "id": "ax000002",
+          "elType": "column",
+          "settings": {
+            "_column_size": 50,
+            "_inline_size": null
+          },
+          "elements": [
+            {
+              "id": "ax000001",
+              "elType": "widget",
+              "widgetType": "html",
+              "settings": {
+                "html": "<p style=\"margin:0;font-size:13px;color:#5C6570;display:flex;align-items:center;gap:8px\">🕒 Mon – Fri: 8:30 – 6:30</p>"
+              },
+              "elements": []
+            }
+          ]
+        },
+        {
+          "id": "ax000004",
+          "elType": "column",
+          "settings": {
+            "_column_size": 50,
+            "_inline_size": null
+          },
+          "elements": [
+            {
+              "id": "ax000003",
+              "elType": "widget",
+              "widgetType": "html",
+              "settings": {
+                "html": "<p style=\"margin:0;font-size:13px;color:#121417;text-align:right\">Call Us: <a href=\"tel:18559829466\" style=\"color:#121417;font-weight:700;text-decoration:none\">(855) 982-9466</a></p>"
+              },
+              "elements": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ax000010",
+      "elType": "section",
+      "isInner": false,
+      "settings": {
+        "layout": "boxed",
+        "gap": "no",
+        "content_width": {
+          "unit": "%",
+          "size": 100
+        },
+        "background_background": "classic",
+        "background_color": "#FFFFFF",
+        "padding": {
+          "unit": "px",
+          "top": "16",
+          "right": "40",
+          "bottom": "16",
+          "left": "40",
+          "isLinked": false
+        }
+      },
+      "elements": [
+        {
+          "id": "ax000007",
+          "elType": "column",
+          "settings": {
+            "_column_size": 22,
+            "_inline_size": null
+          },
+          "elements": [
+            {
+              "id": "ax000006",
+              "elType": "widget",
+              "widgetType": "html",
+              "settings": {
+                "html": "<div style=\"display:flex;align-items:center;gap:10px\">\n            <div style=\"width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#3AA0D8 45%,#F5C400 45%);\"></div>\n            <div style=\"line-height:1.1\">\n              <div style=\"font-weight:800;letter-spacing:.04em;color:#0A2148;font-size:13px\">AXION</div>\n              <div style=\"font-size:10px;letter-spacing:.18em;color:#5C6570\">COMMUNICATIONS</div>\n            </div>\n          </div>"
+              },
+              "elements": []
+            }
+          ]
+        },
+        {
+          "id": "ax000009",
+          "elType": "column",
+          "settings": {
+            "_column_size": 48,
+            "_inline_size": null
+          },
+          "elements": [
+            {
+              "id": "ax000008",
+              "elType": "widget",
+              "widgetType": "html",
+              "settings": {
+                "html": "<nav style=\"display:flex;justify-content:center;gap:22px;font-size:14px;font-weight:600;color:#121417;padding-top:8px\">\n            <a href=\"#\" style=\"color:#121417;text-decoration:none\">Products ▾</a>\n            <a href=\"#\" style=\"color:#121417;text-decoration:none\">Solutions ▾</a>\n            <a href=\"#\" style=\"color:#121417;text-decoration:none\">Company ▾</a>\n            <a href=\"#\" style=\"color:#121417;text-decoration:none\">Resources ▾</a>\n            <a href=\"#\" style=\"color:#121417;text-decoration:none\">Our Network ▾</a>\n          </nav>"
+              },
+              "elements": []
+            }
+          ]
+        },
+        {
+          "id": "ax00000f",
+          "elType": "column",
+          "settings": {
+            "_column_size": 30,
+            "_inline_size": null
+          },
+          "elements": [
+            {
+              "id": "ax00000e",
+              "elType": "section",
+              "isInner": true,
+              "settings": {
+                "layout": "boxed",
+                "gap": "narrow",
+                "background_background": "classic",
+                "padding": {
+                  "unit": "px",
+                  "top": "0",
+                  "right": "0",
+                  "bottom": "0",
+                  "left": "0",
+                  "isLinked": false
+                }
+              },
+              "elements": [
+                {
+                  "id": "ax00000b",
+                  "elType": "column",
+                  "settings": {
+                    "_column_size": 70,
+                    "_inline_size": null
+                  },
+                  "elements": [
+                    {
+                      "id": "ax00000a",
+                      "elType": "widget",
+                      "widgetType": "button",
+                      "settings": {
+                        "text": "Let's Get Started →",
+                        "align": "right",
+                        "link": {
+                          "url": "#",
+                          "is_external": "",
+                          "nofollow": ""
+                        },
+                        "background_color": "#F5C400",
+                        "button_text_color": "#121417",
+                        "hover_color": "#FFFFFF",
+                        "hover_background_color": "#0A2148",
+                        "size": "md",
+                        "border_radius": {
+                          "unit": "px",
+                          "top": "8",
+                          "right": "8",
+                          "bottom": "8",
+                          "left": "8",
+                          "isLinked": true
+                        },
+                        "button_padding": {
+                          "unit": "px",
+                          "top": "14",
+                          "right": "22",
+                          "bottom": "14",
+                          "left": "22",
+                          "isLinked": false
+                        }
+                      },
+                      "elements": []
+                    }
+                  ]
+                },
+                {
+                  "id": "ax00000d",
+                  "elType": "column",
+                  "settings": {
+                    "_column_size": 30,
+                    "_inline_size": null
+                  },
+                  "elements": [
+                    {
+                      "id": "ax00000c",
+                      "elType": "widget",
+                      "widgetType": "html",
+                      "settings": {
+                        "html": "<p style=\"margin:10px 0 0;text-align:right;font-weight:700\"><a href=\"#\" style=\"color:#0A2148;text-decoration:none\">Login</a></p>"
+                      },
+                      "elements": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ax000014",
+      "elType": "section",
+      "isInner": false,
+      "settings": {
+        "layout": "boxed",
+        "gap": "no",
+        "content_width": {
+          "unit": "%",
+          "size": 100
+        },
+        "background_background": "classic",
+        "background_color": "#FFFFFF",
+        "padding": {
+          "unit": "px",
+          "top": "36",
+          "right": "80",
+          "bottom": "8",
+          "left": "80",
+          "isLinked": false
+        }
+      },
+      "elements": [
+        {
+          "id": "ax000013",
+          "elType": "column",
+          "settings": {
+            "_column_size": 100,
+            "_inline_size": null
+          },
+          "elements": [
+            {
+              "id": "ax000011",
+              "elType": "widget",
+              "widgetType": "html",
+              "settings": {
+                "html": "<h1 style=\"margin:0;font-size:48px;line-height:1.15;font-weight:800;color:#121417;letter-spacing:-.02em\">How Can Vets Reduce <span style=\"color:#3AA0D8\">No-Shows</span> At Their Clinic Effectively?</h1>"
+              },
+              "elements": []
+            },
+            {
+              "id": "ax000012",
+              "elType": "widget",
+              "widgetType": "html",
+              "settings": {
+                "html": "<div style=\"display:flex;align-items:center;gap:10px;margin-top:18px\">\n          <img src=\"https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=120&h=120&q=80\" alt=\"Author\" width=\"36\" height=\"36\" style=\"border-radius:50%;object-fit:cover\" />\n          <span style=\"font-weight:700;color:#121417\">T</span>\n          <span style=\"color:#5C6570\">May 12, 2026</span>\n        </div>"
+              },
+              "elements": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ax00001e",
+      "elType": "section",
+      "isInner": false,
+      "settings": {
+        "layout": "boxed",
+        "gap": "no",
+        "content_width": {
+          "unit": "%",
+          "size": 100
+        },
+        "background_background": "classic",
+        "background_color": "#FFFFFF",
+        "padding": {
+          "unit": "px",
+          "top": "28",
+          "right": "80",
+          "bottom": "24",
+          "left": "80",
+          "isLinked": false
+        }
+      },
+      "elements": [
+        {
+          "id": "ax00001b",
+          "elType": "column",
+          "settings": {
+            "_column_size": 42,
+            "_inline_size": null,
+            "background_background": "classic",
+            "background_color": "#F3F5F7",
+            "border_radius": {
+              "unit": "px",
+              "top": "16",
+              "right": "16",
+              "bottom": "16",
+              "left": "16",
+              "isLinked": true
+            },
+            "padding": {
+              "unit": "px",
+              "top": "28",
+              "right": "28",
+              "bottom": "28",
+              "left": "28",
+              "isLinked": false
+            }
+          },
+          "elements": [
+            {
+              "id": "ax000015",
+              "elType": "widget",
+              "widgetType": "html",
+              "settings": {
+                "html": "<h3 style=\"margin:0 0 16px;font-size:28px;font-weight:800;color:#121417\">Key <span style=\"color:#3AA0D8\">Takeaways</span></h3>"
+              },
+              "elements": []
+            },
+            {
+              "id": "ax00001a",
+              "elType": "widget",
+              "widgetType": "icon-list",
+              "settings": {
+                "icon_list": [
+                  {
+                    "_id": "ax000016",
+                    "text": "Two-way SMS reminders recover more appointments than voicemail.",
+                    "selected_icon": {
+                      "value": "fas fa-check",
+                      "library": "fa-solid"
+                    }
+                  },
+                  {
+                    "_id": "ax000017",
+                    "text": "Confirmations the afternoon before cut same-day no-shows hardest.",
+                    "selected_icon": {
+                      "value": "fas fa-check",
+                      "library": "fa-solid"
+                    }
+                  },
+                  {
+                    "_id": "ax000018",
+                    "text": "After-hours routing keeps emergency calls off the front desk.",
+                    "selected_icon": {
+                      "value": "fas fa-check",
+                      "library": "fa-solid"
+                    }
+                  },
+                  {
+                    "_id": "ax000019",
+                    "text": "A three-doctor clinic can recapture a five-figure year from the 9:40 AM gap.",
+                    "selected_icon": {
+                      "value": "fas fa-check",
+                      "library": "fa-solid"
+                    }
+                  }
+                ],
+                "icon_color": "#3AA0D8",
+                "text_color": "#121417",
+                "space_between": {
+                  "unit": "px",
+                  "size": 12
+                }
+              },
+              "elements": []
+            }
+          ]
+        },
+        {
+          "id": "ax00001d",
+          "elType": "column",
+          "settings": {
+            "_column_size": 58,
+            "_inline_size": null
+          },
+          "elements": [
+            {
+              "id": "ax00001c",
+              "elType": "widget",
+              "widgetType": "image",
+              "settings": {
+                "image": {
+                  "url": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=1400&q=80",
+                  "id": "",
+                  "alt": "Veterinarian working at a clinic desk",
+                  "source": "url"
+                },
+                "image_size": "full",
+                "align": "center",
+                "border_radius": {
+                  "unit": "px",
+                  "top": "16",
+                  "right": "16",
+                  "bottom": "16",
+                  "left": "16",
+                  "isLinked": true
+                }
+              },
+              "elements": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ax000022",
+      "elType": "section",
+      "isInner": false,
+      "settings": {
+        "layout": "boxed",
+        "gap": "no",
+        "content_width": {
+          "unit": "%",
+          "size": 100
+        },
+        "background_background": "classic",
+        "background_color": "#FFFFFF",
+        "padding": {
+          "unit": "px",
+          "top": "20",
+          "right": "80",
+          "bottom": "12",
+          "left": "80",
+          "isLinked": false
+        }
+      },
+      "elements": [
+        {
+          "id": "ax000021",
+          "elType": "column",
+          "settings": {
+            "_column_size": 100,
+            "_inline_size": null
+          },
+          "elements": [
+            {
+              "id": "ax00001f",
+              "elType": "widget",
+              "widgetType": "html",
+              "settings": {
+                "html": "<h2 style=\"margin:0 0 16px;font-size:34px;line-height:1.2;font-weight:800;color:#121417\">The 9:40 AM Gap That Costs Your Clinic $180</h2>"
+              },
+              "elements": []
+            },
+            {
+              "id": "ax000020",
+              "elType": "widget",
+              "widgetType": "text-editor",
+              "settings": {
+                "editor": "<p>The slot is on the board. The chart is pulled. Then 9:40 AM comes and the client is not in the lobby. For most general practices that empty hour is not a free coffee break — it is a lost exam, a delayed surgery day, and a technician team that still has to be paid.</p>\n         <p>At a typical outpatient fee, a single missed appointment is about $180 in production. Multiply that across a week of “we tried calling yesterday” and the no-show rate stops looking like a client problem and starts looking like a communications system problem.</p>",
+                "align": "left",
+                "text_color": "#121417"
+              },
+              "elements": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ax000026",
+      "elType": "section",
+      "isInner": false,
+      "settings": {
+        "layout": "boxed",
+        "gap": "no",
+        "content_width": {
+          "unit": "%",
+          "size": 100
+        },
+        "background_background": "classic",
+        "background_color": "#FFFFFF",
+        "padding": {
+          "unit": "px",
+          "top": "12",
+          "right": "80",
+          "bottom": "12",
+          "left": "80",
+          "isLinked": false
+        }
+      },
+      "elements": [
+        {
+          "id": "ax000025",
+          "elType": "column",
+          "settings": {
+            "_column_size": 100,
+            "_inline_size": null
+          },
+          "elements": [
+            {
+              "id": "ax000023",
+              "elType": "widget",
+              "widgetType": "html",
+              "settings": {
+                "html": "<h2 style=\"margin:0 0 16px;font-size:34px;line-height:1.2;font-weight:800;color:#121417\">Why Vet <span style=\"color:#3AA0D8\">No-Shows</span> Aren't Like Other No-Shows</h2>"
+              },
+              "elements": []
+            },
+            {
+              "id": "ax000024",
+              "elType": "widget",
+              "widgetType": "text-editor",
+              "settings": {
+                "editor": "<p>Pet owners are not skipping a haircut. They are juggling school drop-off, a nervous animal, and a clinic that may only pick up between 8:30 and noon. A one-way reminder that dumps into voicemail does not give them a way to reschedule, so they simply do not come.</p>\n         <p>Veterinary no-shows also cluster around first-thing and last-thing slots — the same windows where your doctors are most productive. That is why a generic “appointment reminder tool” underperforms in clinics: it was built for restaurants, not for patients who cannot speak for themselves.</p>",
+                "align": "left",
+                "text_color": "#121417"
+              },
+              "elements": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ax000029",
+      "elType": "section",
+      "isInner": false,
+      "settings": {
+        "layout": "boxed",
+        "gap": "no",
+        "content_width": {
+          "unit": "%",
+          "size": 100
+        },
+        "background_background": "classic",
+        "background_color": "#FFFFFF",
+        "padding": {
+          "unit": "px",
+          "top": "12",
+          "right": "80",
+          "bottom": "8",
+          "left": "80",
+          "isLinked": false
+        }
+      },
+      "elements": [
+        {
+          "id": "ax000028",
+          "elType": "column",
+          "settings": {
+            "_column_size": 100,
+            "_inline_size": null
+          },
+          "elements": [
+            {
+              "id": "ax000027",
+              "elType": "widget",
+              "widgetType": "html",
+              "settings": {
+                "html": "<h2 style=\"margin:0 0 8px;font-size:34px;line-height:1.2;font-weight:800;color:#121417\">Three Communication Fixes That Actually Move the <span style=\"color:#3AA0D8\">No-Show Rate</span></h2>"
+              },
+              "elements": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ax000031",
+      "elType": "section",
+      "isInner": false,
+      "settings": {
+        "layout": "boxed",
+        "gap": "no",
+        "content_width": {
+          "unit": "%",
+          "size": 100
+        },
+        "background_background": "classic",
+        "background_color": "#FFFFFF",
+        "padding": {
+          "unit": "px",
+          "top": "8",
+          "right": "80",
+          "bottom": "8",
+          "left": "80",
+          "isLinked": false
+        }
+      },
+      "elements": [
+        {
+          "id": "ax000030",
+          "elType": "column",
+          "settings": {
+            "_column_size": 100,
+            "_inline_size": null
+          },
+          "elements": [
+            {
+              "id": "ax00002a",
+              "elType": "widget",
+              "widgetType": "html",
+              "settings": {
+                "html": "<h3 style=\"margin:0 0 10px;font-size:22px;font-weight:800;color:#121417\">1. Two-Way SMS Reminders, Not Broadcast Blasts</h3>"
+              },
+              "elements": []
+            },
+            {
+              "id": "ax00002b",
+              "elType": "widget",
+              "widgetType": "text-editor",
+              "settings": {
+                "editor": "<p>Send the reminder on the channel owners already answer. Let them reply YES, NEED TO MOVE, or DROP-OFF so the slot is either locked or released while you can still fill it.</p>",
+                "align": "left",
+                "text_color": "#121417"
+              },
+              "elements": []
+            },
+            {
+              "id": "ax00002f",
+              "elType": "widget",
+              "widgetType": "icon-list",
+              "settings": {
+                "icon_list": [
+                  {
+                    "_id": "ax00002c",
+                    "text": "First ping 48 hours out, second ping the afternoon before.",
+                    "selected_icon": {
+                      "value": "fas fa-check",
+                      "library": "fa-solid"
+                    }
+                  },
+                  {
+                    "_id": "ax00002d",
+                    "text": "Include the pet name, doctor, and a one-tap confirm.",
+                    "selected_icon": {
+                      "value": "fas fa-check",
+                      "library": "fa-solid"
+                    }
+                  },
+                  {
+                    "_id": "ax00002e",
+                    "text": "Route “I need to reschedule” to a live inbox, not a dead-end keyword.",
+                    "selected_icon": {
+                      "value": "fas fa-check",
+                      "library": "fa-solid"
+                    }
+                  }
+                ],
+                "icon_color": "#3AA0D8",
+                "text_color": "#121417",
+                "space_between": {
+                  "unit": "px",
+                  "size": 12
+                }
+              },
+              "elements": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ax000039",
+      "elType": "section",
+      "isInner": false,
+      "settings": {
+        "layout": "boxed",
+        "gap": "no",
+        "content_width": {
+          "unit": "%",
+          "size": 100
+        },
+        "background_background": "classic",
+        "background_color": "#FFFFFF",
+        "padding": {
+          "unit": "px",
+          "top": "8",
+          "right": "80",
+          "bottom": "8",
+          "left": "80",
+          "isLinked": false
+        }
+      },
+      "elements": [
+        {
+          "id": "ax000038",
+          "elType": "column",
+          "settings": {
+            "_column_size": 100,
+            "_inline_size": null
+          },
+          "elements": [
+            {
+              "id": "ax000032",
+              "elType": "widget",
+              "widgetType": "html",
+              "settings": {
+                "html": "<h3 style=\"margin:0 0 10px;font-size:22px;font-weight:800;color:#121417\">2. Auto-Attendant Routing That Protects The Front Desk</h3>"
+              },
+              "elements": []
+            },
+            {
+              "id": "ax000033",
+              "elType": "widget",
+              "widgetType": "text-editor",
+              "settings": {
+                "editor": "<p>Missed inbound calls are tomorrow’s no-shows. If a client cannot reach you to confirm, they assume the clinic will call them back — and then they stop trying.</p>",
+                "align": "left",
+                "text_color": "#121417"
+              },
+              "elements": []
+            },
+            {
+              "id": "ax000037",
+              "elType": "widget",
+              "widgetType": "icon-list",
+              "settings": {
+                "icon_list": [
+                  {
+                    "_id": "ax000034",
+                    "text": "Split new clients, pharmacy, and doctor lines at the greeting.",
+                    "selected_icon": {
+                      "value": "fas fa-check",
+                      "library": "fa-solid"
+                    }
+                  },
+                  {
+                    "_id": "ax000035",
+                    "text": "Overflow to a trained after-hours path instead of voicemail.",
+                    "selected_icon": {
+                      "value": "fas fa-check",
+                      "library": "fa-solid"
+                    }
+                  },
+                  {
+                    "_id": "ax000036",
+                    "text": "Capture the pet’s name before the hold music starts.",
+                    "selected_icon": {
+                      "value": "fas fa-check",
+                      "library": "fa-solid"
+                    }
+                  }
+                ],
+                "icon_color": "#3AA0D8",
+                "text_color": "#121417",
+                "space_between": {
+                  "unit": "px",
+                  "size": 12
+                }
+              },
+              "elements": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ax000041",
+      "elType": "section",
+      "isInner": false,
+      "settings": {
+        "layout": "boxed",
+        "gap": "no",
+        "content_width": {
+          "unit": "%",
+          "size": 100
+        },
+        "background_background": "classic",
+        "background_color": "#FFFFFF",
+        "padding": {
+          "unit": "px",
+          "top": "8",
+          "right": "80",
+          "bottom": "8",
+          "left": "80",
+          "isLinked": false
+        }
+      },
+      "elements": [
+        {
+          "id": "ax000040",
+          "elType": "column",
+          "settings": {
+            "_column_size": 100,
+            "_inline_size": null
+          },
+          "elements": [
+            {
+              "id": "ax00003a",
+              "elType": "widget",
+              "widgetType": "html",
+              "settings": {
+                "html": "<h3 style=\"margin:0 0 10px;font-size:22px;font-weight:800;color:#121417\">3. Outbound Confirmation Calls For High-Value Visits</h3>"
+              },
+              "elements": []
+            },
+            {
+              "id": "ax00003b",
+              "elType": "widget",
+              "widgetType": "text-editor",
+              "settings": {
+                "editor": "<p>Surgery, dentistry, and new-patient exams deserve a live voice, not only a text. A short confirmation call the day before recovers the appointments that SMS cannot.</p>",
+                "align": "left",
+                "text_color": "#121417"
+              },
+              "elements": []
+            },
+            {
+              "id": "ax00003f",
+              "elType": "widget",
+              "widgetType": "icon-list",
+              "settings": {
+                "icon_list": [
+                  {
+                    "_id": "ax00003c",
+                    "text": "Priority queue: anesthesia, euthanasia consults, first visits.",
+                    "selected_icon": {
+                      "value": "fas fa-check",
+                      "library": "fa-solid"
+                    }
+                  },
+                  {
+                    "_id": "ax00003d",
+                    "text": "Leave a callback number that actually rings a person.",
+                    "selected_icon": {
+                      "value": "fas fa-check",
+                      "library": "fa-solid"
+                    }
+                  },
+                  {
+                    "_id": "ax00003e",
+                    "text": "Log the outcome on the appointment so the floor knows who is coming.",
+                    "selected_icon": {
+                      "value": "fas fa-check",
+                      "library": "fa-solid"
+                    }
+                  }
+                ],
+                "icon_color": "#3AA0D8",
+                "text_color": "#121417",
+                "space_between": {
+                  "unit": "px",
+                  "size": 12
+                }
+              },
+              "elements": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ax000048",
+      "elType": "section",
+      "isInner": false,
+      "settings": {
+        "layout": "full_width",
+        "gap": "no",
+        "content_width": {
+          "unit": "%",
+          "size": 100
+        },
+        "background_background": "classic",
+        "background_color": "#0A2148",
+        "padding": {
+          "unit": "px",
+          "top": "28",
+          "right": "48",
+          "bottom": "28",
+          "left": "48",
+          "isLinked": false
+        },
+        "border_radius": {
+          "unit": "px",
+          "top": "0",
+          "right": "0",
+          "bottom": "0",
+          "left": "0",
+          "isLinked": true
+        }
+      },
+      "elements": [
+        {
+          "id": "ax000043",
+          "elType": "column",
+          "settings": {
+            "_column_size": 12,
+            "_inline_size": null
+          },
+          "elements": [
+            {
+              "id": "ax000042",
+              "elType": "widget",
+              "widgetType": "icon",
+              "settings": {
+                "selected_icon": {
+                  "value": "fas fa-bell",
+                  "library": "fa-solid"
+                },
+                "primary_color": "#F5C400",
+                "size": {
+                  "unit": "px",
+                  "size": 42
+                },
+                "align": "center"
+              },
+              "elements": []
+            }
+          ]
+        },
+        {
+          "id": "ax000045",
+          "elType": "column",
+          "settings": {
+            "_column_size": 58,
+            "_inline_size": null
+          },
+          "elements": [
+            {
+              "id": "ax000044",
+              "elType": "widget",
+              "widgetType": "html",
+              "settings": {
+                "html": "<p style=\"margin:8px 0 0;font-size:20px;line-height:1.45;font-weight:700;color:#FFFFFF\">Want fewer no-shows and a fuller schedule? See how automated reminders and online booking can help your clinic.</p>"
+              },
+              "elements": []
+            }
+          ]
+        },
+        {
+          "id": "ax000047",
+          "elType": "column",
+          "settings": {
+            "_column_size": 30,
+            "_inline_size": null
+          },
+          "elements": [
+            {
+              "id": "ax000046",
+              "elType": "widget",
+              "widgetType": "button",
+              "settings": {
+                "text": "Schedule A Demo Now →",
+                "align": "right",
+                "link": {
+                  "url": "#",
+                  "is_external": "",
+                  "nofollow": ""
+                },
+                "background_color": "#F5C400",
+                "button_text_color": "#121417",
+                "hover_color": "#FFFFFF",
+                "hover_background_color": "#0A2148",
+                "size": "md",
+                "border_radius": {
+                  "unit": "px",
+                  "top": "8",
+                  "right": "8",
+                  "bottom": "8",
+                  "left": "8",
+                  "isLinked": true
+                },
+                "button_padding": {
+                  "unit": "px",
+                  "top": "14",
+                  "right": "22",
+                  "bottom": "14",
+                  "left": "22",
+                  "isLinked": false
+                }
+              },
+              "elements": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ax00004c",
+      "elType": "section",
+      "isInner": false,
+      "settings": {
+        "layout": "boxed",
+        "gap": "no",
+        "content_width": {
+          "unit": "%",
+          "size": 100
+        },
+        "background_background": "classic",
+        "background_color": "#FFFFFF",
+        "padding": {
+          "unit": "px",
+          "top": "36",
+          "right": "80",
+          "bottom": "16",
+          "left": "80",
+          "isLinked": false
+        }
+      },
+      "elements": [
+        {
+          "id": "ax00004b",
+          "elType": "column",
+          "settings": {
+            "_column_size": 100,
+            "_inline_size": null
+          },
+          "elements": [
+            {
+              "id": "ax000049",
+              "elType": "widget",
+              "widgetType": "html",
+              "settings": {
+                "html": "<h2 style=\"margin:0 0 16px;font-size:34px;line-height:1.2;font-weight:800;color:#121417\">A Worked Example: <span style=\"color:#3AA0D8\">The Three-Doctor Practice</span></h2>"
+              },
+              "elements": []
+            },
+            {
+              "id": "ax00004a",
+              "elType": "widget",
+              "widgetType": "text-editor",
+              "settings": {
+                "editor": "<p>A three-doctor mixed-animal clinic in the suburbs was running a 12% no-show rate on outpatient exams. They were already sending email reminders. Clients said they “never saw them.” After moving confirmations to two-way SMS and adding a live overflow path after 6:30, same-week no-shows dropped to 5% in 45 days.</p>\n         <p>The recovered hours paid for the communications stack in the first month. More important: technicians stopped rebuilding the day around empty slots, and the 9:40 AM gap mostly disappeared from the board.</p>",
+                "align": "left",
+                "text_color": "#121417"
+              },
+              "elements": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ax00004f",
+      "elType": "section",
+      "isInner": false,
+      "settings": {
+        "layout": "boxed",
+        "gap": "no",
+        "content_width": {
+          "unit": "%",
+          "size": 100
+        },
+        "background_background": "classic",
+        "background_color": "#FFFFFF",
+        "padding": {
+          "unit": "px",
+          "top": "24",
+          "right": "80",
+          "bottom": "8",
+          "left": "80",
+          "isLinked": false
+        }
+      },
+      "elements": [
+        {
+          "id": "ax00004e",
+          "elType": "column",
+          "settings": {
+            "_column_size": 100,
+            "_inline_size": null
+          },
+          "elements": [
+            {
+              "id": "ax00004d",
+              "elType": "widget",
+              "widgetType": "html",
+              "settings": {
+                "html": "<h2 style=\"margin:0 0 8px;font-size:34px;line-height:1.2;font-weight:800;color:#121417\">Frequently Asked <span style=\"color:#3AA0D8\">Questions</span></h2>"
+              },
+              "elements": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ax000058",
+      "elType": "section",
+      "isInner": false,
+      "settings": {
+        "layout": "boxed",
+        "gap": "no",
+        "content_width": {
+          "unit": "%",
+          "size": 100
+        },
+        "background_background": "classic",
+        "background_color": "#FFFFFF",
+        "padding": {
+          "unit": "px",
+          "top": "8",
+          "right": "80",
+          "bottom": "24",
+          "left": "80",
+          "isLinked": false
+        }
+      },
+      "elements": [
+        {
+          "id": "ax000057",
+          "elType": "column",
+          "settings": {
+            "_column_size": 100,
+            "_inline_size": null
+          },
+          "elements": [
+            {
+              "id": "ax000056",
+              "elType": "widget",
+              "widgetType": "accordion",
+              "settings": {
+                "tabs": [
+                  {
+                    "_id": "ax000050",
+                    "tab_title": "How Can Axion Help Reduce Missed Appointments At Our Veterinary Clinic?",
+                    "tab_content": "<p>Axion puts two-way reminders, caller routing, and after-hours coverage on one stack built for clinics. Confirmations go out as SMS clients actually answer. Unconfirmed visits escalate to a live call. Emergency and pharmacy traffic is split off the front desk so appointment lines stay clear.</p>"
+                  },
+                  {
+                    "_id": "ax000051",
+                    "tab_title": "Can We Keep Our Existing Phone Number?",
+                    "tab_content": "<p>Yes. Your published clinic number stays the same. Calls are pointed at Axion’s routing layer so clients never have to learn a new digit string, and your existing marketing, Google listing, and printed materials keep working.</p>"
+                  },
+                  {
+                    "_id": "ax000052",
+                    "tab_title": "Does Axion Support After-Hours Calls And Emergency Routing?",
+                    "tab_content": "<p>After 6:30, callers can be offered emergency instructions, a doctor-on-call path, or a next-morning callback — whatever your medical director sets. You are not forced into a generic answering service script.</p>"
+                  },
+                  {
+                    "_id": "ax000053",
+                    "tab_title": "Do Pet Owners Need To Download An App?",
+                    "tab_content": "<p>No. Reminders and replies run over standard text messaging. Online booking is a browser link you can drop into SMS, email, or your website.</p>"
+                  },
+                  {
+                    "_id": "ax000054",
+                    "tab_title": "How Fast Can A Clinic Go Live?",
+                    "tab_content": "<p>Most practices are confirming on SMS within a couple of weeks: number port or call-path setup, reminder templates with pet names, and a short rehearsal with the front desk.</p>"
+                  },
+                  {
+                    "_id": "ax000055",
+                    "tab_title": "Will This Work With The Practice-Management Software We Already Use?",
+                    "tab_content": "<p>Axion is built to sit beside the PMS you already run. Appointment data feeds reminders; confirmation outcomes can be written back so the floor sees who is coming without a second login.</p>"
+                  }
+                ],
+                "border_color": "#D9DEE6",
+                "title_background": "#F3F5F7",
+                "title_color": "#2E6BDB",
+                "tab_active_color": "#0A2148",
+                "content_background_color": "#0A2148",
+                "content_text_color": "#FFFFFF",
+                "icon_align": "right",
+                "selected_icon": {
+                  "value": "fas fa-chevron-down",
+                  "library": "fa-solid"
+                },
+                "selected_active_icon": {
+                  "value": "fas fa-chevron-up",
+                  "library": "fa-solid"
+                }
+              },
+              "elements": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ax00005f",
+      "elType": "section",
+      "isInner": false,
+      "settings": {
+        "layout": "full_width",
+        "gap": "no",
+        "content_width": {
+          "unit": "%",
+          "size": 100
+        },
+        "background_background": "classic",
+        "background_color": "#F5C400",
+        "padding": {
+          "unit": "px",
+          "top": "28",
+          "right": "48",
+          "bottom": "28",
+          "left": "48",
+          "isLinked": false
+        }
+      },
+      "elements": [
+        {
+          "id": "ax00005a",
+          "elType": "column",
+          "settings": {
+            "_column_size": 12,
+            "_inline_size": null
+          },
+          "elements": [
+            {
+              "id": "ax000059",
+              "elType": "widget",
+              "widgetType": "icon",
+              "settings": {
+                "selected_icon": {
+                  "value": "fas fa-clipboard-list",
+                  "library": "fa-solid"
+                },
+                "primary_color": "#0A2148",
+                "size": {
+                  "unit": "px",
+                  "size": 42
+                },
+                "align": "center"
+              },
+              "elements": []
+            }
+          ]
+        },
+        {
+          "id": "ax00005c",
+          "elType": "column",
+          "settings": {
+            "_column_size": 58,
+            "_inline_size": null
+          },
+          "elements": [
+            {
+              "id": "ax00005b",
+              "elType": "widget",
+              "widgetType": "html",
+              "settings": {
+                "html": "<p style=\"margin:4px 0 0;font-size:22px;font-weight:800;color:#121417\">10 Ways to Reduce No-Shows at Your Clinic</p>\n           <p style=\"margin:6px 0 0;font-size:16px;color:#121417\">A practical checklist you can implement today.</p>"
+              },
+              "elements": []
+            }
+          ]
+        },
+        {
+          "id": "ax00005e",
+          "elType": "column",
+          "settings": {
+            "_column_size": 30,
+            "_inline_size": null
+          },
+          "elements": [
+            {
+              "id": "ax00005d",
+              "elType": "widget",
+              "widgetType": "button",
+              "settings": {
+                "text": "Download Free Checklist →",
+                "align": "right",
+                "link": {
+                  "url": "#",
+                  "is_external": "",
+                  "nofollow": ""
+                },
+                "background_color": "#0A2148",
+                "button_text_color": "#FFFFFF",
+                "hover_color": "#FFFFFF",
+                "hover_background_color": "#0A2148",
+                "size": "md",
+                "border_radius": {
+                  "unit": "px",
+                  "top": "8",
+                  "right": "8",
+                  "bottom": "8",
+                  "left": "8",
+                  "isLinked": true
+                },
+                "button_padding": {
+                  "unit": "px",
+                  "top": "14",
+                  "right": "22",
+                  "bottom": "14",
+                  "left": "22",
+                  "isLinked": false
+                }
+              },
+              "elements": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ax000062",
+      "elType": "section",
+      "isInner": false,
+      "settings": {
+        "layout": "boxed",
+        "gap": "no",
+        "content_width": {
+          "unit": "%",
+          "size": 100
+        },
+        "background_background": "classic",
+        "background_color": "#FFFFFF",
+        "padding": {
+          "unit": "px",
+          "top": "40",
+          "right": "64",
+          "bottom": "12",
+          "left": "64",
+          "isLinked": false
+        }
+      },
+      "elements": [
+        {
+          "id": "ax000061",
+          "elType": "column",
+          "settings": {
+            "_column_size": 100,
+            "_inline_size": null
+          },
+          "elements": [
+            {
+              "id": "ax000060",
+              "elType": "widget",
+              "widgetType": "heading",
+              "settings": {
+                "title": "Related posts",
+                "header_size": "h3",
+                "align": "left",
+                "title_color": "#0A2148"
+              },
+              "elements": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ax00006f",
+      "elType": "section",
+      "isInner": false,
+      "settings": {
+        "layout": "boxed",
+        "gap": "extended",
+        "content_width": {
+          "unit": "%",
+          "size": 100
+        },
+        "background_background": "classic",
+        "background_color": "#FFFFFF",
+        "padding": {
+          "unit": "px",
+          "top": "8",
+          "right": "64",
+          "bottom": "48",
+          "left": "64",
+          "isLinked": false
+        }
+      },
+      "elements": [
+        {
+          "id": "ax000065",
+          "elType": "column",
+          "settings": {
+            "_column_size": 25,
+            "_inline_size": null
+          },
+          "elements": [
+            {
+              "id": "ax000063",
+              "elType": "widget",
+              "widgetType": "image",
+              "settings": {
+                "image": {
+                  "url": "https://images.unsplash.com/photo-1576201836106-db1758fd1c97?auto=format&fit=crop&w=800&q=80",
+                  "id": "",
+                  "alt": "7 Ways To Improve Client Retention At Your Vet Clinic",
+                  "source": "url"
+                },
+                "image_size": "full",
+                "align": "center",
+                "border_radius": {
+                  "unit": "px",
+                  "top": "14",
+                  "right": "14",
+                  "bottom": "14",
+                  "left": "14",
+                  "isLinked": true
+                }
+              },
+              "elements": []
+            },
+            {
+              "id": "ax000064",
+              "elType": "widget",
+              "widgetType": "html",
+              "settings": {
+                "html": "<p style=\"margin:12px 0 6px;font-size:12px;font-weight:700;color:#3AA0D8;text-transform:capitalize\">Practice Management</p>\n           <p style=\"margin:0 0 10px;font-size:16px;line-height:1.35;font-weight:800;color:#121417\">7 Ways To Improve Client Retention At Your Vet Clinic</p>\n           <p style=\"margin:0;font-size:12px;color:#5C6570\">July 14, 2026 • 9 Min Read</p>"
+              },
+              "elements": []
+            }
+          ]
+        },
+        {
+          "id": "ax000068",
+          "elType": "column",
+          "settings": {
+            "_column_size": 25,
+            "_inline_size": null
+          },
+          "elements": [
+            {
+              "id": "ax000066",
+              "elType": "widget",
+              "widgetType": "image",
+              "settings": {
+                "image": {
+                  "url": "https://images.unsplash.com/photo-1450778869180-41d0601e046e?auto=format&fit=crop&w=800&q=80",
+                  "id": "",
+                  "alt": "What Pet Owners Actually Want From Clinic Reminders",
+                  "source": "url"
+                },
+                "image_size": "full",
+                "align": "center",
+                "border_radius": {
+                  "unit": "px",
+                  "top": "14",
+                  "right": "14",
+                  "bottom": "14",
+                  "left": "14",
+                  "isLinked": true
+                }
+              },
+              "elements": []
+            },
+            {
+              "id": "ax000067",
+              "elType": "widget",
+              "widgetType": "html",
+              "settings": {
+                "html": "<p style=\"margin:12px 0 6px;font-size:12px;font-weight:700;color:#3AA0D8;text-transform:capitalize\">Client Communications</p>\n           <p style=\"margin:0 0 10px;font-size:16px;line-height:1.35;font-weight:800;color:#121417\">What Pet Owners Actually Want From Clinic Reminders</p>\n           <p style=\"margin:0;font-size:12px;color:#5C6570\">June 22, 2026 • 6 Min Read</p>"
+              },
+              "elements": []
+            }
+          ]
+        },
+        {
+          "id": "ax00006b",
+          "elType": "column",
+          "settings": {
+            "_column_size": 25,
+            "_inline_size": null
+          },
+          "elements": [
+            {
+              "id": "ax000069",
+              "elType": "widget",
+              "widgetType": "image",
+              "settings": {
+                "image": {
+                  "url": "https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?auto=format&fit=crop&w=800&q=80",
+                  "id": "",
+                  "alt": "How After-Hours Call Routing Protects Your Front Desk",
+                  "source": "url"
+                },
+                "image_size": "full",
+                "align": "center",
+                "border_radius": {
+                  "unit": "px",
+                  "top": "14",
+                  "right": "14",
+                  "bottom": "14",
+                  "left": "14",
+                  "isLinked": true
+                }
+              },
+              "elements": []
+            },
+            {
+              "id": "ax00006a",
+              "elType": "widget",
+              "widgetType": "html",
+              "settings": {
+                "html": "<p style=\"margin:12px 0 6px;font-size:12px;font-weight:700;color:#3AA0D8;text-transform:capitalize\">Practice Management</p>\n           <p style=\"margin:0 0 10px;font-size:16px;line-height:1.35;font-weight:800;color:#121417\">How After-Hours Call Routing Protects Your Front Desk</p>\n           <p style=\"margin:0;font-size:12px;color:#5C6570\">May 30, 2026 • 8 Min Read</p>"
+              },
+              "elements": []
+            }
+          ]
+        },
+        {
+          "id": "ax00006e",
+          "elType": "column",
+          "settings": {
+            "_column_size": 25,
+            "_inline_size": null
+          },
+          "elements": [
+            {
+              "id": "ax00006c",
+              "elType": "widget",
+              "widgetType": "image",
+              "settings": {
+                "image": {
+                  "url": "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=800&q=80",
+                  "id": "",
+                  "alt": "A Simple Script For Confirming Tomorrow's Appointments",
+                  "source": "url"
+                },
+                "image_size": "full",
+                "align": "center",
+                "border_radius": {
+                  "unit": "px",
+                  "top": "14",
+                  "right": "14",
+                  "bottom": "14",
+                  "left": "14",
+                  "isLinked": true
+                }
+              },
+              "elements": []
+            },
+            {
+              "id": "ax00006d",
+              "elType": "widget",
+              "widgetType": "html",
+              "settings": {
+                "html": "<p style=\"margin:12px 0 6px;font-size:12px;font-weight:700;color:#3AA0D8;text-transform:capitalize\">Client Communications</p>\n           <p style=\"margin:0 0 10px;font-size:16px;line-height:1.35;font-weight:800;color:#121417\">A Simple Script For Confirming Tomorrow's Appointments</p>\n           <p style=\"margin:0;font-size:12px;color:#5C6570\">April 18, 2026 • 5 Min Read</p>"
+              },
+              "elements": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ax00007e",
+      "elType": "section",
+      "isInner": false,
+      "settings": {
+        "layout": "full_width",
+        "gap": "no",
+        "content_width": {
+          "unit": "%",
+          "size": 100
+        },
+        "background_background": "classic",
+        "background_color": "#071A38",
+        "padding": {
+          "unit": "px",
+          "top": "48",
+          "right": "64",
+          "bottom": "28",
+          "left": "64",
+          "isLinked": false
+        }
+      },
+      "elements": [
+        {
+          "id": "ax000071",
+          "elType": "column",
+          "settings": {
+            "_column_size": 32,
+            "_inline_size": null
+          },
+          "elements": [
+            {
+              "id": "ax000070",
+              "elType": "widget",
+              "widgetType": "html",
+              "settings": {
+                "html": "<div style=\"display:flex;align-items:center;gap:10px;margin-bottom:16px\">\n            <div style=\"width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#3AA0D8 45%,#F5C400 45%);\"></div>\n            <div style=\"font-weight:800;letter-spacing:.08em;color:#FFFFFF\">AXION</div>\n          </div>\n          <p style=\"color:#c9d3e0;font-size:14px;line-height:1.6;margin:0 0 18px\">Communication systems for veterinary clinics — phones, reminders, and after-hours coverage that keep the appointment book full.</p>\n          <p style=\"margin:0;font-size:22px;font-weight:800;color:#F5C400\">(855) 982-9466</p>"
+              },
+              "elements": []
+            }
+          ]
+        },
+        {
+          "id": "ax000074",
+          "elType": "column",
+          "settings": {
+            "_column_size": 17,
+            "_inline_size": null
+          },
+          "elements": [
+            {
+              "id": "ax000072",
+              "elType": "widget",
+              "widgetType": "heading",
+              "settings": {
+                "title": "Products",
+                "header_size": "h5",
+                "align": "left",
+                "title_color": "#FFFFFF"
+              },
+              "elements": []
+            },
+            {
+              "id": "ax000073",
+              "elType": "widget",
+              "widgetType": "html",
+              "settings": {
+                "html": "<p style=\"color:#c9d3e0;font-size:14px;line-height:1.9;margin:0\">\n              <a href=\"#\" style=\"color:#c9d3e0;text-decoration:none\">Overview</a><br/>\n              <a href=\"#\" style=\"color:#c9d3e0;text-decoration:none\">For clinics</a><br/>\n              <a href=\"#\" style=\"color:#c9d3e0;text-decoration:none\">Support</a>\n            </p>"
+              },
+              "elements": []
+            }
+          ]
+        },
+        {
+          "id": "ax000077",
+          "elType": "column",
+          "settings": {
+            "_column_size": 17,
+            "_inline_size": null
+          },
+          "elements": [
+            {
+              "id": "ax000075",
+              "elType": "widget",
+              "widgetType": "heading",
+              "settings": {
+                "title": "Solutions",
+                "header_size": "h5",
+                "align": "left",
+                "title_color": "#FFFFFF"
+              },
+              "elements": []
+            },
+            {
+              "id": "ax000076",
+              "elType": "widget",
+              "widgetType": "html",
+              "settings": {
+                "html": "<p style=\"color:#c9d3e0;font-size:14px;line-height:1.9;margin:0\">\n              <a href=\"#\" style=\"color:#c9d3e0;text-decoration:none\">Overview</a><br/>\n              <a href=\"#\" style=\"color:#c9d3e0;text-decoration:none\">For clinics</a><br/>\n              <a href=\"#\" style=\"color:#c9d3e0;text-decoration:none\">Support</a>\n            </p>"
+              },
+              "elements": []
+            }
+          ]
+        },
+        {
+          "id": "ax00007a",
+          "elType": "column",
+          "settings": {
+            "_column_size": 17,
+            "_inline_size": null
+          },
+          "elements": [
+            {
+              "id": "ax000078",
+              "elType": "widget",
+              "widgetType": "heading",
+              "settings": {
+                "title": "Company",
+                "header_size": "h5",
+                "align": "left",
+                "title_color": "#FFFFFF"
+              },
+              "elements": []
+            },
+            {
+              "id": "ax000079",
+              "elType": "widget",
+              "widgetType": "html",
+              "settings": {
+                "html": "<p style=\"color:#c9d3e0;font-size:14px;line-height:1.9;margin:0\">\n              <a href=\"#\" style=\"color:#c9d3e0;text-decoration:none\">Overview</a><br/>\n              <a href=\"#\" style=\"color:#c9d3e0;text-decoration:none\">For clinics</a><br/>\n              <a href=\"#\" style=\"color:#c9d3e0;text-decoration:none\">Support</a>\n            </p>"
+              },
+              "elements": []
+            }
+          ]
+        },
+        {
+          "id": "ax00007d",
+          "elType": "column",
+          "settings": {
+            "_column_size": 17,
+            "_inline_size": null
+          },
+          "elements": [
+            {
+              "id": "ax00007b",
+              "elType": "widget",
+              "widgetType": "heading",
+              "settings": {
+                "title": "Resources",
+                "header_size": "h5",
+                "align": "left",
+                "title_color": "#FFFFFF"
+              },
+              "elements": []
+            },
+            {
+              "id": "ax00007c",
+              "elType": "widget",
+              "widgetType": "html",
+              "settings": {
+                "html": "<p style=\"color:#c9d3e0;font-size:14px;line-height:1.9;margin:0\">\n              <a href=\"#\" style=\"color:#c9d3e0;text-decoration:none\">Overview</a><br/>\n              <a href=\"#\" style=\"color:#c9d3e0;text-decoration:none\">For clinics</a><br/>\n              <a href=\"#\" style=\"color:#c9d3e0;text-decoration:none\">Support</a>\n            </p>"
+              },
+              "elements": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ax000083",
+      "elType": "section",
+      "isInner": false,
+      "settings": {
+        "layout": "full_width",
+        "gap": "no",
+        "content_width": {
+          "unit": "%",
+          "size": 100
+        },
+        "background_background": "classic",
+        "background_color": "#071A38",
+        "padding": {
+          "unit": "px",
+          "top": "16",
+          "right": "64",
+          "bottom": "20",
+          "left": "64",
+          "isLinked": false
+        }
+      },
+      "elements": [
+        {
+          "id": "ax000080",
+          "elType": "column",
+          "settings": {
+            "_column_size": 60,
+            "_inline_size": null
+          },
+          "elements": [
+            {
+              "id": "ax00007f",
+              "elType": "widget",
+              "widgetType": "html",
+              "settings": {
+                "html": "<p style=\"margin:0;font-size:12px;color:#9aa7b8\">© 2026 Axion Communications. All rights reserved.</p>"
+              },
+              "elements": []
+            }
+          ]
+        },
+        {
+          "id": "ax000082",
+          "elType": "column",
+          "settings": {
+            "_column_size": 40,
+            "_inline_size": null
+          },
+          "elements": [
+            {
+              "id": "ax000081",
+              "elType": "widget",
+              "widgetType": "html",
+              "settings": {
+                "html": "<p style=\"margin:0;font-size:12px;color:#9aa7b8;text-align:right\">\n            <a href=\"#\" style=\"color:#9aa7b8;text-decoration:none\">Privacy</a> ·\n            <a href=\"#\" style=\"color:#9aa7b8;text-decoration:none\">Terms</a> ·\n            <a href=\"#\" style=\"color:#9aa7b8;text-decoration:none\">Security</a>\n          </p>"
+              },
+              "elements": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

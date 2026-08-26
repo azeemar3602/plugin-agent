@@ -293,6 +293,57 @@ export async function importElementorFiles(options: {
   return payload;
 }
 
+export type CreatedPageResult = {
+  ok: boolean;
+  id: number;
+  url: string;
+  edit?: string;
+  title?: string;
+};
+
+export async function createElementorPage(options: {
+  site: Site;
+  title: string;
+  slug?: string;
+  status?: "publish" | "draft" | "private";
+  elementor: { content: unknown[]; page_settings?: Record<string, unknown>; title?: string };
+}): Promise<CreatedPageResult> {
+  const result = await tryUrls(options.site.url, "plugin-agent/v1/page", {
+    method: "POST",
+    headers: {
+      Authorization: authHeader(options.site),
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      title: options.title,
+      slug: options.slug,
+      status: options.status ?? "publish",
+      elementor: options.elementor,
+    }),
+    signal: AbortSignal.timeout(90000),
+  });
+
+  if (result.status === 401 || result.status === 403) {
+    throw new Error(
+      "WordPress rejected the username or application password. Use an administrator Application Password from Users → Profile.",
+    );
+  }
+  if (result.status === 404) {
+    throw new Error(
+      "This Plugin Agent Helper is too old to create pages. Download the helper zip, replace the current helper, activate it, then try again.",
+    );
+  }
+  if (!result.ok) {
+    throw new Error(wpErrorMessage(result.json, result.text, result.status));
+  }
+  const payload = result.json as CreatedPageResult;
+  if (!payload?.ok || !payload.id) {
+    throw new Error("The site did not create the Elementor page.");
+  }
+  return payload;
+}
+
 function wpErrorMessage(json: unknown, text: string, status: number): string {
   if (json && typeof json === "object") {
     const rec = json as { message?: string };

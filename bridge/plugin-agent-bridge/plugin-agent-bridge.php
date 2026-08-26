@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Plugin Agent Helper
  * Description: Lets the Plugin Agent install plugins and import Elementor templates over the REST API using a WordPress application password.
- * Version: 1.1.0
+ * Version: 1.2.0
  * Author: Plugin Agent
  * Requires at least: 6.0
  * Requires PHP: 7.4
@@ -43,6 +43,16 @@ function plugin_agent_register_routes() {
             'permission_callback' => 'plugin_agent_can_deploy',
         )
     );
+
+    register_rest_route(
+        'plugin-agent/v1',
+        '/page',
+        array(
+            'methods'             => 'POST',
+            'callback'            => 'plugin_agent_create_page',
+            'permission_callback' => 'plugin_agent_can_deploy',
+        )
+    );
 }
 
 function plugin_agent_can_deploy() {
@@ -61,12 +71,12 @@ function plugin_agent_status() {
     return array(
         'ok'               => true,
         'bridge'           => 'plugin-agent',
-        'version'          => '1.1.0',
+        'version'          => '1.2.0',
         'wordpress'        => get_bloginfo('version'),
         'site'             => home_url('/'),
         'elementor'        => plugin_agent_has_elementor(),
         'elementorVersion' => defined('ELEMENTOR_VERSION') ? ELEMENTOR_VERSION : null,
-        'capabilities'     => array('deploy', 'templates'),
+        'capabilities'     => array('deploy', 'templates', 'page'),
         'templates'        => plugin_agent_list_templates(),
     );
 }
@@ -199,6 +209,75 @@ function plugin_agent_import_templates() {
         'message'  => $imported
             ? ('Imported ' . count($imported) . ' Elementor template' . (count($imported) === 1 ? '' : 's') . '.')
             : 'No templates were imported.',
+    );
+}
+
+function plugin_agent_create_page(WP_REST_Request $request) {
+    if (!plugin_agent_has_elementor()) {
+        return new WP_Error(
+            'no_elementor',
+            'Elementor is not installed or active on this site. Install Elementor, then send the page again.',
+            array('status' => 400)
+        );
+    }
+
+    $payload = $request->get_json_params();
+    if (!is_array($payload) || !$payload) {
+        $payload = $request->get_params();
+    }
+
+    $doc = isset($payload['elementor']) && is_array($payload['elementor'])
+        ? $payload['elementor']
+        : $payload;
+    $content = isset($doc['content']) ? $doc['content'] : null;
+    if (!$content || !is_array($content)) {
+        return new WP_Error(
+            'plugin_agent_no_content',
+            'Send elementor.content as an Elementor sections array.',
+            array('status' => 400)
+        );
+    }
+
+    $title  = sanitize_text_field(isset($payload['title']) ? $payload['title'] : (isset($doc['title']) ? $doc['title'] : 'Imported page'));
+    $slug   = sanitize_title(isset($payload['slug']) ? $payload['slug'] : $title);
+    $status = sanitize_key(isset($payload['status']) ? $payload['status'] : 'publish');
+    if (!in_array($status, array('publish', 'draft', 'private'), true)) {
+        $status = 'publish';
+    }
+
+    $post_id = wp_insert_post(
+        array(
+            'post_title'  => $title,
+            'post_name'   => $slug,
+            'post_status' => $status,
+            'post_type'   => 'page',
+            'post_author' => get_current_user_id(),
+        ),
+        true
+    );
+    if (is_wp_error($post_id)) {
+        return $post_id;
+    }
+
+    update_post_meta($post_id, '_wp_page_template', 'elementor_canvas');
+    update_post_meta($post_id, '_elementor_edit_mode', 'builder');
+    update_post_meta($post_id, '_elementor_template_type', 'wp-page');
+    update_post_meta($post_id, '_elementor_version', defined('ELEMENTOR_VERSION') ? ELEMENTOR_VERSION : '3.0.0');
+    update_post_meta($post_id, '_elementor_data', wp_slash(wp_json_encode($content)));
+    if (!empty($doc['page_settings']) && is_array($doc['page_settings'])) {
+        update_post_meta($post_id, '_elementor_page_settings', $doc['page_settings']);
+    }
+
+    if (isset(\Elementor\Plugin::$instance->files_manager)) {
+        \Elementor\Plugin::$instance->files_manager->clear_cache();
+    }
+
+    return array(
+        'ok'   => true,
+        'id'   => $post_id,
+        'url'  => get_permalink($post_id),
+        'edit' => admin_url('post.php?post=' . $post_id . '&action=elementor'),
+        'title'=> $title,
     );
 }
 

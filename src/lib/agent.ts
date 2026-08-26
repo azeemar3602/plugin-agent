@@ -218,7 +218,8 @@ function fillFromMemory(store: Store, pending: PendingTask) {
     }
   }
 
-  if (!pending.path && store.lastPluginId) {
+  // Never reuse the last plugin just because a new site was connected.
+  if (!pending.path && store.lastPluginId && pending.goal === "update") {
     const plugin = store.plugins.find((item) => item.id === store.lastPluginId);
     if (plugin && isDeployablePluginPath(plugin.path)) pending.path = plugin.path;
   }
