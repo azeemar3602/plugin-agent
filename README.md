@@ -34,7 +34,13 @@ If Windows SmartScreen appears, choose **More info → Run anyway**. The portabl
 
 Then drag them in, or use **Install on WordPress**.
 
-A design file is turned into Elementor JSON from the layout bands in the mockup. Images and icons are placeholders. Widgets are picked from plugins that are active on the selected site (Give → donation shortcode, FormLayer → form, Queryra → search, Polylang → language switcher, plus Elementor core widgets).
+A design file is turned into Elementor JSON from the layout in the mockup, using **widgets actually registered on the connected site**:
+
+1. The helper lists every Elementor widget (core + addons).
+2. Plugin Agent classifies them (header, hero, FAQ, CTA, footer, …).
+3. Dropping a JPEG/PNG maps the design onto those widgets. Addon widgets win over Elementor core. HTML widgets are a last resort only when the site has nothing else.
+
+Images and icons stay as placeholders unless the widget already has default media.
 
 ## Where things go
 

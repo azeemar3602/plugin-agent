@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Plugin Agent Helper
  * Description: Lets the Plugin Agent install plugins and import Elementor templates over the REST API using a WordPress application password.
- * Version: 1.2.0
+ * Version: 1.5.0
  * Author: Plugin Agent
  * Requires at least: 6.0
  * Requires PHP: 7.4
@@ -53,6 +53,16 @@ function plugin_agent_register_routes() {
             'permission_callback' => 'plugin_agent_can_deploy',
         )
     );
+
+    register_rest_route(
+        'plugin-agent/v1',
+        '/widgets',
+        array(
+            'methods'             => 'GET',
+            'callback'            => 'plugin_agent_list_widgets',
+            'permission_callback' => 'plugin_agent_can_deploy',
+        )
+    );
 }
 
 function plugin_agent_can_deploy() {
@@ -71,12 +81,12 @@ function plugin_agent_status() {
     return array(
         'ok'               => true,
         'bridge'           => 'plugin-agent',
-        'version'          => '1.2.0',
+        'version'          => '1.5.0',
         'wordpress'        => get_bloginfo('version'),
         'site'             => home_url('/'),
         'elementor'        => plugin_agent_has_elementor(),
         'elementorVersion' => defined('ELEMENTOR_VERSION') ? ELEMENTOR_VERSION : null,
-        'capabilities'     => array('deploy', 'templates', 'page'),
+        'capabilities'     => array('deploy', 'templates', 'page', 'widgets'),
         'templates'        => plugin_agent_list_templates(),
     );
 }
@@ -245,16 +255,32 @@ function plugin_agent_create_page(WP_REST_Request $request) {
         $status = 'publish';
     }
 
-    $post_id = wp_insert_post(
-        array(
-            'post_title'  => $title,
-            'post_name'   => $slug,
-            'post_status' => $status,
-            'post_type'   => 'page',
-            'post_author' => get_current_user_id(),
-        ),
-        true
-    );
+    $existing = isset($payload['id']) ? absint($payload['id']) : 0;
+    if ($existing) {
+        $post = get_post($existing);
+        if (!$post || $post->post_type !== 'page') {
+            return new WP_Error('plugin_agent_no_page', 'That page id was not found.', array('status' => 404));
+        }
+        $post_id = wp_update_post(
+            array(
+                'ID'          => $existing,
+                'post_title'  => $title,
+                'post_status' => $status,
+            ),
+            true
+        );
+    } else {
+        $post_id = wp_insert_post(
+            array(
+                'post_title'  => $title,
+                'post_name'   => $slug,
+                'post_status' => $status,
+                'post_type'   => 'page',
+                'post_author' => get_current_user_id(),
+            ),
+            true
+        );
+    }
     if (is_wp_error($post_id)) {
         return $post_id;
     }
@@ -278,6 +304,148 @@ function plugin_agent_create_page(WP_REST_Request $request) {
         'url'  => get_permalink($post_id),
         'edit' => admin_url('post.php?post=' . $post_id . '&action=elementor'),
         'title'=> $title,
+    );
+}
+
+function plugin_agent_keep_widget_control($key, $type) {
+    $type = (string) $type;
+    $content_types = array('text', 'textarea', 'wysiwyg', 'url', 'media', 'repeater', 'select', 'switcher', 'number', 'choose', 'icon', 'icons');
+    if (!in_array($type, $content_types, true)) {
+        return false;
+    }
+    if (in_array($key, array('heading_before', 'heading_highlight', 'heading_after'), true)) {
+        return true;
+    }
+    if (preg_match('/(_typo_|_bg_|_border_|_shadow_|slideshow|ken_burns)/', $key)) {
+        return false;
+    }
+    if (preg_match('/^(axn_|hide_)/', $key)) {
+        return false;
+    }
+    if (preg_match('/^(heading_|highlight_|body_text_|muted_text_|icons_|buttons_|btn_|cards_|card_|images_|overlay_)/', $key)) {
+        return false;
+    }
+    return true;
+}
+
+function plugin_agent_widget_plugin_slug($widget) {
+    try {
+        $ref  = new ReflectionClass($widget);
+        $file = str_replace('\\', '/', (string) $ref->getFileName());
+        $needle = '/plugins/';
+        $pos    = strpos($file, $needle);
+        if ($pos === false) {
+            return '';
+        }
+        $rest = substr($file, $pos + strlen($needle));
+        $slug = explode('/', $rest)[0];
+        return is_string($slug) ? $slug : '';
+    } catch (Throwable $e) {
+        return '';
+    }
+}
+
+function plugin_agent_is_addon_widget($widget, $name, $title, $cats) {
+    $class = is_object($widget) ? get_class($widget) : '';
+    if ($class && strpos($class, 'Elementor\\') !== 0 && strpos($class, 'ElementorPro\\') !== 0) {
+        return true;
+    }
+
+    $file = '';
+    try {
+        $ref  = new ReflectionClass($widget);
+        $file = str_replace('\\', '/', (string) $ref->getFileName());
+    } catch (Throwable $e) {
+        $file = '';
+    }
+
+    if ($file) {
+        $in_elementor = (
+            strpos($file, '/elementor/includes/widgets/') !== false ||
+            strpos($file, '/elementor/modules/') !== false ||
+            strpos($file, '/elementor-pro/') !== false
+        );
+        if (!$in_elementor) {
+            return true;
+        }
+    }
+
+    $hay = strtolower($name . ' ' . $title . ' ' . implode(' ', (array) $cats));
+    return (
+        false !== strpos($hay, 'axion') ||
+        false !== strpos($hay, 'arcadia')
+    );
+}
+
+function plugin_agent_list_widgets() {
+    if (!plugin_agent_has_elementor()) {
+        return new WP_Error(
+            'no_elementor',
+            'Elementor is not installed or active on this site.',
+            array('status' => 400)
+        );
+    }
+
+    $manager = \Elementor\Plugin::$instance->widgets_manager;
+
+    $out = array();
+    foreach ($manager->get_widget_types() as $name => $widget) {
+        $title  = method_exists($widget, 'get_title') ? $widget->get_title() : $name;
+        $cats   = method_exists($widget, 'get_categories') ? $widget->get_categories() : array();
+        $plugin = plugin_agent_widget_plugin_slug($widget);
+        $custom = plugin_agent_is_addon_widget($widget, $name, $title, $cats);
+
+        $controls = array();
+        if (method_exists($widget, 'get_stack')) {
+            $stack = $widget->get_stack(false);
+            $raw   = isset($stack['controls']) && is_array($stack['controls']) ? $stack['controls'] : array();
+            foreach ($raw as $key => $ctrl) {
+                if (!is_string($key) || strpos($key, '_') === 0) {
+                    continue;
+                }
+                $type = isset($ctrl['type']) ? $ctrl['type'] : '';
+                if (!plugin_agent_keep_widget_control($key, $type)) {
+                    continue;
+                }
+                $controls[$key] = array(
+                    'type'    => $type,
+                    'label'   => isset($ctrl['label']) ? $ctrl['label'] : '',
+                    'default' => isset($ctrl['default']) ? $ctrl['default'] : null,
+                    'options' => isset($ctrl['options']) ? array_keys((array) $ctrl['options']) : null,
+                    'fields'  => isset($ctrl['fields']) ? array_keys((array) $ctrl['fields']) : null,
+                );
+            }
+        }
+
+        $out[] = array(
+            'type'       => $name,
+            'title'      => $title,
+            'plugin'     => $plugin,
+            'categories' => $cats,
+            'custom'     => $custom,
+            'axion'      => $custom,
+            'controls'   => $controls,
+        );
+    }
+
+    usort(
+        $out,
+        function ($a, $b) {
+            if ($a['custom'] === $b['custom']) {
+                return strcasecmp($a['title'], $b['title']);
+            }
+            return $a['custom'] ? -1 : 1;
+        }
+    );
+
+    $custom = array_values(array_filter($out, function ($w) { return !empty($w['custom']); }));
+
+    return array(
+        'ok'      => true,
+        'count'   => count($out),
+        'widgets' => $out,
+        'custom'  => $custom,
+        'axion'   => $custom,
     );
 }
 

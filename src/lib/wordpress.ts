@@ -305,6 +305,7 @@ export async function createElementorPage(options: {
   site: Site;
   title: string;
   slug?: string;
+  id?: number;
   status?: "publish" | "draft" | "private";
   elementor: { content: unknown[]; page_settings?: Record<string, unknown>; title?: string };
 }): Promise<CreatedPageResult> {
@@ -316,6 +317,7 @@ export async function createElementorPage(options: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
+      id: options.id,
       title: options.title,
       slug: options.slug,
       status: options.status ?? "publish",
@@ -342,6 +344,51 @@ export async function createElementorPage(options: {
     throw new Error("The site did not create the Elementor page.");
   }
   return payload;
+}
+
+export type RemoteElementorWidget = {
+  type: string;
+  title: string;
+  plugin?: string;
+  custom?: boolean;
+  axion?: boolean;
+  controls?: Record<
+    string,
+    { type: string; label?: string; default?: unknown; options?: string[] | null; fields?: string[] | null }
+  >;
+};
+
+export async function listElementorWidgets(site: Site): Promise<RemoteElementorWidget[]> {
+  const result = await tryUrls(site.url, "plugin-agent/v1/widgets", {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      Authorization: authHeader(site),
+    },
+  });
+  if (!result.ok || !result.json || typeof result.json !== "object") return [];
+  const payload = result.json as { widgets?: RemoteElementorWidget[] };
+  return (payload.widgets ?? []).map((item) => ({
+    type: item.type,
+    title: item.title,
+    plugin: item.plugin,
+    custom: item.custom ?? item.axion,
+    axion: item.axion,
+    controls: item.controls,
+  }));
+}
+
+export async function findPageIdBySlug(site: Site, slug: string): Promise<number | undefined> {
+  const result = await tryUrls(site.url, `wp/v2/pages?slug=${encodeURIComponent(slug)}&_fields=id,slug`, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      Authorization: authHeader(site),
+    },
+  });
+  if (!result.ok || !Array.isArray(result.json) || result.json.length === 0) return undefined;
+  const id = (result.json[0] as { id?: number }).id;
+  return typeof id === "number" ? id : undefined;
 }
 
 function wpErrorMessage(json: unknown, text: string, status: number): string {

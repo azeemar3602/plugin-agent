@@ -83,6 +83,8 @@ export type AgentCard =
       widgetsUsed: string[];
       sectionRoles: string[];
       imported: boolean;
+      pageUrl?: string;
+      detectedCount?: number;
     };
 
 export type ChatMessage = {

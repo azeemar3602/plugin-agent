@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { readStore, toPublicSite } from "@/lib/store";
-import { listPlugins, probeSite } from "@/lib/wordpress";
+import { listElementorWidgets, listPlugins, probeSite } from "@/lib/wordpress";
 
 export const dynamic = "force-dynamic";
 
@@ -13,10 +13,17 @@ export async function GET() {
   }
   const probe = await probeSite(site);
   const plugins = probe.status === "auth-failed" ? [] : await listPlugins(site);
+  const widgets = probe.status === "connected" ? await listElementorWidgets(site) : [];
   return NextResponse.json({
     site: toPublicSite(site),
     probe,
     plugins,
+    widgets: widgets.map((item) => ({
+      type: item.type,
+      title: item.title,
+      plugin: item.plugin,
+      custom: Boolean(item.custom),
+    })),
     templates: probe.templates ?? [],
     elementor: probe.elementor ?? false,
   });

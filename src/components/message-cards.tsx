@@ -96,11 +96,25 @@ function DesignCard({ card }: { card: Extract<AgentCard, { kind: "design" }> }) 
             Layout: {card.sectionRoles.join(" → ") || "sections"}
           </p>
           <p className="mt-1 font-mono text-[11px] text-muted-foreground">
-            Widgets: {card.widgetsUsed.join(", ") || "heading, text, button"}
+            Widgets: {card.widgetsUsed.join(", ") || "none"}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            {card.imported ? "Imported to Elementor Saved Templates." : "Download JSON and import in Elementor."}
+            {card.imported
+              ? card.pageUrl
+                ? "Published from the widgets detected on this site."
+                : "Imported to Elementor Saved Templates."
+              : "Download JSON and import in Elementor."}
           </p>
+          {card.pageUrl ? (
+            <a
+              href={card.pageUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-2 inline-block text-xs text-primary underline-offset-2 hover:underline"
+            >
+              Open live page
+            </a>
+          ) : null}
         </div>
         <Button size="sm" nativeButton={false} render={<a href={`/api/design/${card.designId}`} />}>
           <Download />

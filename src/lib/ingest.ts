@@ -11,7 +11,13 @@ import {
 import { mutateStore, readStore, toPublicStore } from "./store";
 import type { PublicStore } from "./types";
 import { saveUploadedTree } from "./upload-tree";
-import { importElementorFiles, listPlugins } from "./wordpress";
+import {
+  createElementorPage,
+  findPageIdBySlug,
+  importElementorFiles,
+  listElementorWidgets,
+  listPlugins,
+} from "./wordpress";
 
 type IncomingFile = {
   relativePath: string;
@@ -161,16 +167,19 @@ async function processDesigns(designs: IncomingFile[]) {
   const site =
     snapshot.sites.find((item) => item.id === snapshot.lastSiteId) ?? snapshot.sites[0];
   const plugins = site ? await listPlugins(site) : [];
+  const remoteWidgets = site ? await listElementorWidgets(site) : [];
 
   for (const design of designs) {
     const built = await buildDesignTemplate({
       filename: basenameOf(design),
       buffer: design.buffer,
       plugins,
+      remoteWidgets,
     });
 
     let imported = false;
     let importError: string | undefined;
+    let pageUrl: string | undefined;
     if (site?.url && site.username && site.password) {
       try {
         await importElementorFiles({
@@ -178,6 +187,29 @@ async function processDesigns(designs: IncomingFile[]) {
           files: [{ filename: `${built.id}.json`, buffer: Buffer.from(built.json) }],
         });
         imported = true;
+        const parsed = JSON.parse(built.json) as {
+          title?: string;
+          content?: unknown[];
+          page_settings?: Record<string, unknown>;
+        };
+        const slug = (parsed.title || built.title || "design-page")
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "")
+          .slice(0, 60) || "design-page";
+        const existingId = await findPageIdBySlug(site, slug);
+        const page = await createElementorPage({
+          site,
+          id: existingId,
+          title: parsed.title || built.title,
+          slug,
+          elementor: {
+            title: parsed.title,
+            content: parsed.content ?? [],
+            page_settings: parsed.page_settings,
+          },
+        });
+        pageUrl = page.url;
       } catch (error) {
         importError = error instanceof Error ? error.message : "Could not import the generated JSON.";
       }
@@ -203,8 +235,8 @@ async function processDesigns(designs: IncomingFile[]) {
         id: nid(),
         role: "agent",
         text: imported
-          ? `Built **${built.title}** from the design using widgets from the plugins on this site (${built.widgetsUsed.join(", ")}). Images and icons are placeholders. Imported into Templates → Saved Templates.`
-          : `Built **${built.title}** from the design (${built.sectionRoles.join(" → ")}). Widgets used: ${built.widgetsUsed.join(", ") || "heading/text/button"}. Images and icons are placeholders.${importError ? ` Import skipped: ${importError}` : " Download the JSON and import it in Elementor."}`,
+          ? `Detected ${built.detectedWidgets.length} Elementor widgets on this site, then built **${built.title}** using those widgets: ${built.widgetsUsed.join(", ")}.${pageUrl ? ` Live page: ${pageUrl}` : " Saved under Templates → Saved Templates."}`
+          : `Detected widgets, then built **${built.title}** (${built.sectionRoles.join(" → ")}). Widgets used: ${built.widgetsUsed.join(", ") || "none"}.${importError ? ` Import skipped: ${importError}` : " Download the JSON and import it in Elementor."}`,
         createdAt: nowIso(),
         card: {
           kind: "design",
@@ -213,6 +245,8 @@ async function processDesigns(designs: IncomingFile[]) {
           widgetsUsed: built.widgetsUsed,
           sectionRoles: built.sectionRoles,
           imported,
+          pageUrl,
+          detectedCount: built.detectedWidgets.length,
         },
       });
     });

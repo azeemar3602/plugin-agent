@@ -1,5 +1,10 @@
-import type { CatalogWidget, WidgetRole } from "./elementor-widgets";
-import { pickWidget } from "./elementor-widgets";
+import type { CatalogWidget } from "./elementor-widgets";
+import {
+  hasDetectedLayout,
+  pickWidget,
+  planPageFromDetectedWidgets,
+  settingsFromWidget,
+} from "./elementor-widgets";
 
 export type DesignSection = {
   role: string;
@@ -255,6 +260,9 @@ export function buildElementorDocument(options: {
   widgets: CatalogWidget[];
   extras: { donation: boolean; search: boolean; form: boolean; language: boolean };
 }): { json: string; widgetsUsed: string[]; sectionRoles: string[] } {
+  if (hasDetectedLayout(options.widgets)) {
+    return buildFromDetectedWidgets(options.title, options.analysis, options.widgets);
+  }
   const content = options.analysis.sections.map((sec, index) =>
     section(sec.bg, widgetsForSection(sec, index, options.widgets, options.extras)),
   );
@@ -274,5 +282,49 @@ export function buildElementorDocument(options: {
     json: JSON.stringify(document, null, 2),
     widgetsUsed: [...used],
     sectionRoles: options.analysis.sections.map((sec) => sec.role),
+  };
+}
+
+function buildFromDetectedWidgets(
+  title: string,
+  analysis: DesignAnalysis,
+  widgets: CatalogWidget[],
+): { json: string; widgetsUsed: string[]; sectionRoles: string[] } {
+  const plan = planPageFromDetectedWidgets(widgets);
+  const content: ElNode[] = plan.map((picked) =>
+    section(analysis.background || "#FFFFFF", [
+      column(100, [widgetNode(picked, settingsFromWidget(picked))]),
+    ]),
+  );
+  const roles = plan.map((picked) => `${picked.role}:${picked.type}`);
+
+  if (content.length === 0) {
+    return {
+      json: JSON.stringify({ version: "0.4", title, type: "page", content: [] }, null, 2),
+      widgetsUsed: [],
+      sectionRoles: [],
+    };
+  }
+
+  const used = new Set<string>();
+  collectTypes(content, used);
+  return {
+    json: JSON.stringify(
+      {
+        version: "0.4",
+        title,
+        type: "page",
+        page_settings: {
+          background_background: "classic",
+          background_color: analysis.background,
+          hide_title: "yes",
+        },
+        content,
+      },
+      null,
+      2,
+    ),
+    widgetsUsed: [...used],
+    sectionRoles: roles,
   };
 }

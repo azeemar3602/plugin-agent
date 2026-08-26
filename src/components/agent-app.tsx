@@ -38,6 +38,7 @@ export function AgentApp() {
   const [notice, setNotice] = useState<string | null>(null);
   const [remotePlugins, setRemotePlugins] = useState<RemotePlugin[]>([]);
   const [remoteTemplates, setRemoteTemplates] = useState<RemoteTemplate[]>([]);
+  const [remoteWidgets, setRemoteWidgets] = useState<Array<{ type: string; title: string; custom?: boolean }>>([]);
   const [probe, setProbe] = useState<ProbeResult | null>(null);
   const [windowsInstaller, setWindowsInstaller] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -51,10 +52,12 @@ export function AgentApp() {
         probe?: ProbeResult;
         plugins?: RemotePlugin[];
         templates?: RemoteTemplate[];
+        widgets?: Array<{ type: string; title: string; custom?: boolean }>;
       };
       if (data.probe) setProbe(data.probe);
       if (data.plugins) setRemotePlugins(data.plugins);
       setRemoteTemplates(data.templates ?? data.probe?.templates ?? []);
+      setRemoteWidgets(data.widgets ?? []);
     } catch {
       /* shown from chat if needed */
     }
@@ -336,6 +339,29 @@ export function AgentApp() {
                 then drop templates again.
               </p>
             ) : null}
+            {remoteWidgets.length > 0 ? (
+              <div className="mt-4 border-t border-border/60 pt-3">
+                <p className="text-xs font-medium text-muted-foreground">
+                  Detected {remoteWidgets.length} Elementor widgets
+                  {remoteWidgets.some((item) => item.custom)
+                    ? ` · ${remoteWidgets.filter((item) => item.custom).length} from addons (designs use these first)`
+                    : ""}
+                </p>
+                <ul className="mt-2 flex flex-wrap gap-1.5">
+                  {remoteWidgets
+                    .filter((item) => item.custom)
+                    .map((item) => (
+                      <li
+                        key={item.type}
+                        className="rounded-md bg-muted px-2 py-0.5 font-mono text-[11px] text-muted-foreground"
+                        title={item.type}
+                      >
+                        {item.title}
+                      </li>
+                    ))}
+                </ul>
+              </div>
+            ) : null}
             {remoteTemplates.length > 0 ? (
               <div className="mt-4 border-t border-border/60 pt-3">
                 <p className="text-xs font-medium text-muted-foreground">
@@ -359,9 +385,9 @@ export function AgentApp() {
               Drag plugin, templates, or a design
             </p>
             <p className="mt-2 text-xs leading-5 text-muted-foreground">
-              Drop a plugin zip, Elementor JSON, and/or a JPEG, PNG, or PDF of a page design. Designs
-              become Elementor JSON (images and icons are placeholders). Widgets are chosen from
-              plugins installed on the selected site.
+              Drop a plugin zip, Elementor JSON, and/or a JPEG, PNG, or PDF of a page design. The
+              agent lists every Elementor widget on this site, then maps the design onto those
+              widgets — addon widgets first, core widgets only if nothing else fits.
             </p>
             <form
               action="/api/upload"

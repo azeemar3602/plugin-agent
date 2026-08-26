@@ -5,9 +5,14 @@ import { promisify } from "node:util";
 
 import { analyzeDesignBuffer } from "./analyze-image";
 import { buildElementorDocument, type DesignAnalysis } from "./elementor-builder";
-import { activePluginKeys, availableWidgets } from "./elementor-widgets";
+import {
+  activePluginKeys,
+  availableWidgets,
+  mergeRemoteWidgets,
+  titleFromDetectedWidgets,
+} from "./elementor-widgets";
 import { appRoot, dataDir } from "./paths";
-import type { RemotePlugin } from "./wordpress";
+import type { RemoteElementorWidget, RemotePlugin } from "./wordpress";
 
 const execFile = promisify(execFileCb);
 
@@ -19,6 +24,7 @@ export type DesignBuild = {
   widgetsUsed: string[];
   sectionRoles: string[];
   pluginsConsidered: string[];
+  detectedWidgets: string[];
 };
 
 function isDesignName(name: string): boolean {
@@ -55,6 +61,7 @@ export async function buildDesignTemplate(options: {
   filename: string;
   buffer: Buffer;
   plugins: RemotePlugin[];
+  remoteWidgets?: RemoteElementorWidget[];
 }): Promise<DesignBuild> {
   const id = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
   const dir = path.join(dataDir(), "designs", id);
@@ -64,9 +71,10 @@ export async function buildDesignTemplate(options: {
   await writeFile(sourcePath, options.buffer);
 
   const analysis = await analyzeDesignFile(sourcePath, options.buffer);
-  const widgets = availableWidgets(options.plugins);
+  const widgets = mergeRemoteWidgets(availableWidgets(options.plugins), options.remoteWidgets ?? []);
   const keys = activePluginKeys(options.plugins);
-  const title = `Design: ${sourceName.replace(/\.[^.]+$/, "")}`;
+  const title =
+    titleFromDetectedWidgets(widgets) || `Design: ${sourceName.replace(/\.[^.]+$/, "")}`;
   const built = buildElementorDocument({
     title,
     analysis,
@@ -90,5 +98,8 @@ export async function buildDesignTemplate(options: {
     widgetsUsed: built.widgetsUsed,
     sectionRoles: built.sectionRoles,
     pluginsConsidered: [...keys],
+    detectedWidgets: widgets
+      .filter((widget) => widget.source === "remote")
+      .map((widget) => widget.label),
   };
 }
