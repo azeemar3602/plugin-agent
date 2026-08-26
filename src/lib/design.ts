@@ -28,6 +28,7 @@ export type DesignBuild = {
   pluginsConsidered: string[];
   detectedWidgets: string[];
   generatedRoles: WidgetRole[];
+  repairs: Array<{ from: string; to: string; reason: string }>;
 };
 
 function isDesignName(name: string): boolean {
@@ -108,5 +109,6 @@ export async function buildDesignTemplate(options: {
       .filter((widget) => widget.source === "remote")
       .map((widget) => widget.label),
     generatedRoles: options.generatedRoles ?? [],
+    repairs: built.repairs,
   };
 }

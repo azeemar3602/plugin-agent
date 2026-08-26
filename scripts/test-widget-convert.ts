@@ -5,6 +5,7 @@ import path from "node:path";
 
 import { buildElementorDocument } from "../src/lib/elementor-builder";
 import { writeGeneratedPlugin } from "../src/lib/generate-widgets";
+import { repairElementorDocument } from "../src/lib/widget-repair";
 import {
   columnWidths,
   landingPageTitle,
@@ -416,7 +417,58 @@ assert.ok(painIcon);
 assert.ok(landingJson.includes("What does Axion cost?"));
 assert.ok(!landingJson.includes("9:40 AM Gap"));
 assert.ok(!landingJson.includes("How Can Vets Reduce"));
+const painSectionTitle = landingNodes.find((node) => String(node.settings?.title ?? "").includes("Pain Points"));
+assert.equal(painSectionTitle?.widgetType, "heading");
 console.log("landing ok", landingDoc.sectionRoles.join(" → "));
+
+const listFix = repairElementorDocument(
+  JSON.stringify({
+    content: [
+      {
+        id: "a",
+        elType: "widget",
+        widgetType: "text-editor",
+        settings: { editor: "<ul><li>Increase revenue</li><li>Reduce no-shows</li><li>Delight clients</li></ul>" },
+        elements: [],
+      },
+    ],
+  }),
+);
+assert.equal(JSON.parse(listFix.json).content[0].widgetType, "icon-list");
+assert.ok(listFix.repairs.some((item) => item.to === "icon-list"));
+
+const titleFix = repairElementorDocument(
+  JSON.stringify({
+    content: [
+      {
+        id: "b",
+        elType: "widget",
+        widgetType: "text-editor",
+        settings: { editor: '<h2>Just A Few <span style="color:#E24B4A">Pain Points</span> We Solve</h2>' },
+        elements: [],
+      },
+    ],
+  }),
+);
+assert.equal(JSON.parse(titleFix.json).content[0].widgetType, "heading");
+assert.match(String(JSON.parse(titleFix.json).content[0].settings.title), /Pain Points/);
+
+const logoFix = repairElementorDocument(
+  JSON.stringify({
+    content: [
+      {
+        id: "c",
+        elType: "widget",
+        widgetType: "text-editor",
+        settings: { editor: "<p>OTTO · COVETRUS · AVIMARK · PULSE · EZYVET</p>" },
+        elements: [],
+      },
+    ],
+  }),
+);
+assert.equal(JSON.parse(logoFix.json).content[0].widgetType, "icon-list");
+assert.equal(JSON.parse(logoFix.json).content[0].settings.view, "inline");
+console.log("widget repair ok");
 
 async function testGeneratedPlugin() {
   const tmp = await mkdtemp(path.join(os.tmpdir(), "pa-widgets-"));

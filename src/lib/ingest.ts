@@ -27,6 +27,7 @@ import {
 import { cropLandingImages } from "./design-crops";
 import { LANDING_STOCK } from "./layout-plan";
 import { collectRemoteImageUrls, replaceRemoteImageUrls, type HostedMedia } from "./wp-media";
+import { summarizeRepairs } from "./widget-repair";
 
 type IncomingFile = {
   relativePath: string;
@@ -252,6 +253,7 @@ async function processDesigns(designs: IncomingFile[]) {
         : ` This site had no matching widgets for ${built.generatedRoles.join(", ")}, so I generated **Plugin Agent Widgets**. Download the widgets zip from the card, install it on WordPress (Elementor must be active), then those widgets will render — not HTML blocks.`
       : "";
 
+    const repairNote = summarizeRepairs(built.repairs);
     await mutateStore((current) => {
       current.jobs.push({
         id: nid(),
@@ -263,7 +265,7 @@ async function processDesigns(designs: IncomingFile[]) {
         siteUrl: site?.url,
         status: imported ? "success" : "error",
         message: imported
-          ? `Built Elementor JSON from the design and imported it (${built.widgetsUsed.join(", ")}).${uploadedCount ? ` Uploaded ${uploadedCount} images to Media.` : ""}`
+          ? `Built Elementor JSON from the design and imported it (${built.widgetsUsed.join(", ")}).${uploadedCount ? ` Uploaded ${uploadedCount} images to Media.` : ""}${repairNote.trim() ? repairNote : ""}`
           : importError || "Built Elementor JSON from the design.",
         files: [basenameOf(design)],
         createdAt: nowIso(),
@@ -272,8 +274,8 @@ async function processDesigns(designs: IncomingFile[]) {
         id: nid(),
         role: "agent",
         text: imported
-          ? `Detected ${built.detectedWidgets.length} Elementor widgets on this site, mapped sections then columns (${built.sectionRoles.join(" → ")}), and built **${built.title}** in containers: ${built.widgetsUsed.join(", ")}.${generatedNote}${uploadedCount ? ` Uploaded ${uploadedCount} images to the WordPress media library.` : ""}${pageUrl ? ` Live page: ${pageUrl}` : " Saved under Templates → Saved Templates."}`
-          : `Mapped sections then columns (${built.sectionRoles.join(" → ")}), then built **${built.title}** in Elementor containers. Widgets used: ${built.widgetsUsed.join(", ") || "none"}.${generatedNote}${importError ? ` Import skipped: ${importError}` : " Download the JSON and import it in Elementor."}`,
+          ? `Detected ${built.detectedWidgets.length} Elementor widgets on this site, mapped sections then columns (${built.sectionRoles.join(" → ")}), and built **${built.title}** in containers: ${built.widgetsUsed.join(", ")}.${generatedNote}${repairNote}${uploadedCount ? ` Uploaded ${uploadedCount} images to the WordPress media library.` : ""}${pageUrl ? ` Live page: ${pageUrl}` : " Saved under Templates → Saved Templates."}`
+          : `Mapped sections then columns (${built.sectionRoles.join(" → ")}), then built **${built.title}** in Elementor containers. Widgets used: ${built.widgetsUsed.join(", ") || "none"}.${generatedNote}${repairNote}${importError ? ` Import skipped: ${importError}` : " Download the JSON and import it in Elementor."}`,
         createdAt: nowIso(),
         card: {
           kind: "design",

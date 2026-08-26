@@ -1,5 +1,6 @@
 import { GRID_BACKGROUND } from "./icons";
 import type { CatalogWidget } from "./elementor-widgets";
+import { repairElementorDocument } from "./widget-repair";
 import {
   layoutSummary,
   planPageLayout,
@@ -382,36 +383,18 @@ function outerContainer(section: PlannedSection): ElNode {
   };
 }
 
-function collectTypes(nodes: ElNode[], into: Set<string>) {
-  for (const node of nodes) {
-    if (node.widgetType) into.add(node.widgetType);
-    collectTypes(node.elements, into);
-  }
-}
-
 export function buildElementorDocument(options: {
   title: string;
   analysis: DesignAnalysis;
   widgets: CatalogWidget[];
   extras: LayoutExtras;
-}): { json: string; widgetsUsed: string[]; sectionRoles: string[] } {
+}): { json: string; widgetsUsed: string[]; sectionRoles: string[]; repairs: { from: string; to: string; reason: string }[] } {
   const plan = planPageLayout({
     analysis: options.analysis,
     widgets: options.widgets,
     extras: options.extras,
   });
   const content = plan.map((section) => outerContainer(section));
-  const used = new Set<string>();
-  collectTypes(content, used);
-
-  if (content.length === 0) {
-    return {
-      json: JSON.stringify({ version: "0.4", title: options.title, type: "page", content: [] }, null, 2),
-      widgetsUsed: [],
-      sectionRoles: [],
-    };
-  }
-
   const document = {
     version: "0.4",
     title: options.title,
@@ -427,9 +410,21 @@ export function buildElementorDocument(options: {
     },
     content,
   };
+
+  if (content.length === 0) {
+    return {
+      json: JSON.stringify({ version: "0.4", title: options.title, type: "page", content: [] }, null, 2),
+      widgetsUsed: [],
+      sectionRoles: [],
+      repairs: [],
+    };
+  }
+
+  const repaired = repairElementorDocument(JSON.stringify(document), options.widgets);
   return {
-    json: JSON.stringify(document, null, 2),
-    widgetsUsed: [...used],
+    json: repaired.json,
+    widgetsUsed: repaired.widgetsUsed,
     sectionRoles: layoutSummary(plan),
+    repairs: repaired.repairs,
   };
 }

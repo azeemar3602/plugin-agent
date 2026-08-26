@@ -76,6 +76,11 @@ async function main() {
   const help = await runAgent(storeWithSite(), "help");
   assert.match(help[0].text, /JPEG/);
   assert.match(help[0].text, /do not need to paste the URL/i);
+  assert.match(help[0].text, /Icon List/);
+
+  const widgetQa = await runAgent(storeWithSite({ pending: undefined }), "text editor why? it should be icon list");
+  assert.match(widgetQa[0].text, /automatic|Heading|Icon List/i);
+  assert.doesNotMatch(widgetQa[0].text, /What's the WordPress site URL/);
 
   console.log("agent ok");
 }

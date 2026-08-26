@@ -150,6 +150,20 @@ export async function runAgent(store: Store, text: string): Promise<ChatMessage[
     return pageStatusReply(store, known);
   }
 
+  if (!commanded && !slots.path && !slots.password && isWidgetQa(lower) && known) {
+    store.pending = {
+      goal: "update",
+      url: known.url,
+      username: known.username,
+      password: known.password,
+    };
+    return [
+      say(
+        "I fix that on convert, not after you audit Elementor. Every JPEG drop rewrites titles, lists, and icon rows to Heading / Icon / Icon List / Icon Box before import — those do not stay as Text Editor. Drop the design again only if the live page is from an older convert.",
+      ),
+    ];
+  }
+
   const idle =
     !commanded &&
     !slots.path &&
@@ -216,6 +230,11 @@ function inferGoal(text: string, _store: Store, fallback: AgentGoal = "install")
 
 function isInstallCommand(text: string): boolean {
   return /\b(install|update|sync|deploy|push|pack|zip|upload|connect)\b/i.test(text);
+}
+
+function isWidgetQa(lower: string): boolean {
+  if (/\b(text[- ]?editor|icon[- ]?list|icon[- ]?box|html widget)\b/.test(lower)) return true;
+  return /\bwidget\b/.test(lower) && /\b(should|why|instead|wrong|fix|not)\b/.test(lower);
 }
 
 function isPageStatus(lower: string): boolean {
@@ -762,6 +781,7 @@ function helpText(): string {
   return [
     "This window is already aimed at the WordPress site in the header. You do not need to paste the URL again.",
     "Drop a JPEG/PNG of a page design to convert it to Elementor and publish it.",
+    "Lists, titles, and icon rows become Heading / Icon / Icon List / Icon Box automatically — not Text Editor.",
     "Drop a plugin zip or Elementor JSON to install those on the same site.",
     "Use **Add site** only when you want a different WordPress website.",
   ].join("\n");
