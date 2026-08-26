@@ -118,14 +118,12 @@ const plan = planPageFromDetectedWidgets(widgets);
 assert.deepEqual(
   plan.map((widget) => widget.type),
   [
-    "arcadia_axion_header",
     "arcadia_axion_blog_hero",
     "arcadia_axion_key_takeaways",
     "arcadia_axion_article_cta_banner",
     "arcadia_axion_blog_faq",
     "arcadia_axion_download_cta",
     "arcadia_axion_blog_related_posts",
-    "arcadia_axion_footer",
   ],
 );
 
@@ -153,7 +151,7 @@ assert.ok(!built.widgetsUsed.includes("heading"), `Core heading leaked: ${built.
 assert.ok(!built.widgetsUsed.includes("text-editor"), `Core text leaked: ${built.widgetsUsed.join(", ")}`);
 assert.ok(built.widgetsUsed.includes("arcadia_axion_blog_hero"));
 assert.ok(built.widgetsUsed.includes("arcadia_axion_blog_faq"));
-assert.equal(built.widgetsUsed.length, 8);
+assert.equal(built.widgetsUsed.length, 6);
 
 const doc = JSON.parse(built.json) as {
   title: string;
@@ -170,12 +168,16 @@ const types = doc.content.flatMap((section) =>
 );
 assert.ok(types.every((type) => type && type.startsWith("arcadia_axion_")));
 assert.ok(!types.includes("arcadia_axion_author_post_meta"));
+assert.ok(!types.includes("arcadia_axion_header"));
+assert.ok(!types.includes("arcadia_axion_footer"));
 
 const hero = doc.content
   .flatMap((section) => section.elements.flatMap((column) => column.elements))
   .find((node) => node.widgetType === "arcadia_axion_blog_hero");
 assert.ok(hero);
 assert.equal(hero.settings?.heading_highlight, "Reduce");
-assert.ok(!hero.settings?.image, "empty image must not overwrite the widget default");
+assert.equal(hero.settings?.image && typeof hero.settings.image === "object" && "url" in hero.settings.image
+  ? (hero.settings.image as { url: string }).url.includes("unsplash")
+  : false, true);
 
 console.log("ok", types.join(" → "));

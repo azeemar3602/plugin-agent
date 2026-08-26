@@ -41,7 +41,7 @@ function eid(): string {
 }
 
 function widgetNode(widget: CatalogWidget, settings: Record<string, unknown>): ElNode {
-  const merged = { ...settings };
+  const merged = normalizeRepeaterFields({ ...settings });
   if (widget.shortcode && widget.type === "shortcode") {
     merged.shortcode = widget.shortcode;
   }
@@ -55,6 +55,23 @@ function widgetNode(widget: CatalogWidget, settings: Record<string, unknown>): E
     settings: merged,
     elements: [],
   };
+}
+
+function normalizeRepeaterFields(settings: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...settings };
+  for (const [key, value] of Object.entries(out)) {
+    if (!Array.isArray(value) || value.length === 0) continue;
+    if (!value.every((item) => item && typeof item === "object" && !Array.isArray(item))) continue;
+    out[key] = value.map((item) => {
+      const rec = { ...(item as Record<string, unknown>) };
+      if (typeof rec._id !== "string" || !rec._id) rec._id = eid();
+      if ("label" in rec && rec.link == null) {
+        rec.link = { url: "#", is_external: "", nofollow: "" };
+      }
+      return rec;
+    });
+  }
+  return out;
 }
 
 function column(size: number, children: ElNode[], extra: Record<string, unknown> = {}): ElNode {

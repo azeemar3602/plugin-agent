@@ -248,6 +248,7 @@ export function planPageFromDetectedWidgets(widgets: CatalogWidget[]): CatalogWi
   const used = new Set<string>();
   const plan: CatalogWidget[] = [];
   for (const role of LAYOUT_ROLES) {
+    if (role === "header" || role === "footer") continue;
     const matches = addons.filter((widget) => widget.role === role);
     matches.sort((a, b) => scoreWidget(b, role) - scoreWidget(a, role));
     const picked = matches.find((widget) => widget.type !== "html" && !used.has(widget.type));
@@ -345,6 +346,12 @@ function scoreWidget(widget: CatalogWidget, role: WidgetRole): number {
   return score;
 }
 
+const STOCK_MEDIA = {
+  hero: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=1400&q=80",
+  logo: "https://placehold.co/180x40/115696/FFFFFF/png?text=Axion",
+  avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=128&h=128&q=80",
+};
+
 export function settingsFromWidget(widget: CatalogWidget): Record<string, unknown> {
   const settings: Record<string, unknown> = {};
   const controls = widget.controls ?? {};
@@ -364,7 +371,29 @@ export function settingsFromWidget(widget: CatalogWidget): Record<string, unknow
   if (controls.split_layout?.options?.includes("columns") && !settings.split_layout) {
     settings.split_layout = "columns";
   }
+  fillMissingMedia(widget, settings);
   return settings;
+}
+
+function hasMediaUrl(value: unknown): boolean {
+  if (!value || typeof value !== "object") return false;
+  const url = (value as { url?: unknown }).url;
+  return typeof url === "string" && /^https?:\/\//i.test(url);
+}
+
+function fillMissingMedia(widget: CatalogWidget, settings: Record<string, unknown>) {
+  if ((widget.role === "header" || widget.role === "footer") && !hasMediaUrl(settings.logo)) {
+    settings.logo = { url: STOCK_MEDIA.logo, id: "", size: "", alt: settings.logo_alt || "Logo" };
+  }
+  if (widget.role === "blogHero" && !hasMediaUrl(settings.image)) {
+    settings.image = {
+      url: STOCK_MEDIA.hero,
+      id: "",
+      size: "",
+      alt: "Article image",
+    };
+    settings.image_source = "custom";
+  }
 }
 
 function isUsableDefault(value: unknown): boolean {
