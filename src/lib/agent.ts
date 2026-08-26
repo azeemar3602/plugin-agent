@@ -138,6 +138,31 @@ async function runAgent(store: Store, text: string): Promise<ChatMessage[]> {
     !slots.password &&
     !commanded
   ) {
+    const known = store.sites.find((item) => item.id === store.lastSiteId) ?? store.sites[0];
+    if (known) {
+      store.pending = {
+        goal: "update",
+        url: known.url,
+        username: known.username,
+        password: known.password,
+      };
+      const lastDesign = [...store.messages]
+        .reverse()
+        .find((message) => message.card?.kind === "design");
+      const design = lastDesign?.card?.kind === "design" ? lastDesign.card : undefined;
+      if (design?.pageUrl) {
+        return [
+          say(
+            `You're already connected to **${known.label}**. **${design.title}** is live at ${design.pageUrl}. You don't need to paste the site URL again — drop another JPEG only if you want a new page.`,
+          ),
+        ];
+      }
+      return [
+        say(
+          `You're already connected to **${known.label}**. Drop a JPEG, plugin zip, or Elementor JSON. You don't need to paste the site URL again.`,
+        ),
+      ];
+    }
     store.pending = { goal: "install", ask: "url" };
     return [say("What's the WordPress site URL?")];
   }
