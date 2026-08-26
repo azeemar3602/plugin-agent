@@ -38,7 +38,8 @@ A design file is turned into Elementor JSON from the layout in the mockup, using
 
 1. The helper lists every Elementor widget (core + addons).
 2. Plugin Agent classifies them (header, hero, FAQ, CTA, footer, …).
-3. Dropping a JPEG/PNG maps the design onto those widgets. Addon widgets win over Elementor core. HTML widgets are a last resort only when the site has nothing else.
+3. Dropping a JPEG/PNG maps the design onto those widgets. Addon widgets win over Elementor core.
+4. If the design needs a widget the site does not have, Plugin Agent **generates** a real Elementor widget plugin (`Plugin Agent Widgets`), installs it, and converts with those widgets. It does not drop HTML blocks as a substitute.
 
 Images and icons stay as placeholders unless the widget already has default media.
 

@@ -1,6 +1,11 @@
 import { pushPluginNow } from "./agent";
-import { buildDesignTemplate, isDesignFile } from "./design";
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
+
+import { analyzeDesignFile, buildDesignTemplate, isDesignFile } from "./design";
+import { dataDir } from "./paths";
 import { fileBasename, looksLikeElementorTemplate } from "./elementor-detect";
+import { ensureGeneratedWidgets } from "./generate-widgets";
 import { nid, nowIso } from "./ids";
 import {
   extractUploadedZip,
@@ -166,15 +171,32 @@ async function processDesigns(designs: IncomingFile[]) {
   const snapshot = await readStore();
   const site =
     snapshot.sites.find((item) => item.id === snapshot.lastSiteId) ?? snapshot.sites[0];
-  const plugins = site ? await listPlugins(site) : [];
-  const remoteWidgets = site ? await listElementorWidgets(site) : [];
+  let plugins = site ? await listPlugins(site) : [];
+  let remoteWidgets = site ? await listElementorWidgets(site) : [];
 
   for (const design of designs) {
+    const prepDir = path.join(dataDir(), "designs", `prep-${Date.now()}`);
+    await mkdir(prepDir, { recursive: true });
+    const sourceName = basenameOf(design).replace(/[^\w.-]+/g, "-") || "design";
+    const sourcePath = path.join(prepDir, sourceName);
+    await writeFile(sourcePath, design.buffer);
+    const analysis = await analyzeDesignFile(sourcePath, design.buffer);
+    const ensured = await ensureGeneratedWidgets({
+      site,
+      plugins,
+      remoteWidgets,
+      analysis,
+    });
+    plugins = ensured.plugins;
+    remoteWidgets = ensured.remoteWidgets;
+
     const built = await buildDesignTemplate({
       filename: basenameOf(design),
       buffer: design.buffer,
       plugins,
       remoteWidgets,
+      analysis,
+      generatedRoles: ensured.generated,
     });
 
     let imported = false;
@@ -215,6 +237,12 @@ async function processDesigns(designs: IncomingFile[]) {
       }
     }
 
+    const generatedNote = built.generatedRoles.length
+      ? ensured.installed
+        ? ` This site had no matching widgets for ${built.generatedRoles.join(", ")}, so I generated **Plugin Agent Widgets** and installed it.`
+        : ` This site had no matching widgets for ${built.generatedRoles.join(", ")}, so I generated **Plugin Agent Widgets**. Download the widgets zip from the card, install it on WordPress (Elementor must be active), then those widgets will render — not HTML blocks.`
+      : "";
+
     await mutateStore((current) => {
       current.jobs.push({
         id: nid(),
@@ -235,8 +263,8 @@ async function processDesigns(designs: IncomingFile[]) {
         id: nid(),
         role: "agent",
         text: imported
-          ? `Detected ${built.detectedWidgets.length} Elementor widgets on this site, then built **${built.title}** using those widgets: ${built.widgetsUsed.join(", ")}.${pageUrl ? ` Live page: ${pageUrl}` : " Saved under Templates → Saved Templates."}`
-          : `Detected widgets, then built **${built.title}** (${built.sectionRoles.join(" → ")}). Widgets used: ${built.widgetsUsed.join(", ") || "none"}.${importError ? ` Import skipped: ${importError}` : " Download the JSON and import it in Elementor."}`,
+          ? `Detected ${built.detectedWidgets.length} Elementor widgets on this site, then built **${built.title}** using those widgets: ${built.widgetsUsed.join(", ")}.${generatedNote}${pageUrl ? ` Live page: ${pageUrl}` : " Saved under Templates → Saved Templates."}`
+          : `Detected widgets, then built **${built.title}** (${built.sectionRoles.join(" → ")}). Widgets used: ${built.widgetsUsed.join(", ") || "none"}.${generatedNote}${importError ? ` Import skipped: ${importError}` : " Download the JSON and import it in Elementor."}`,
         createdAt: nowIso(),
         card: {
           kind: "design",
@@ -247,6 +275,7 @@ async function processDesigns(designs: IncomingFile[]) {
           imported,
           pageUrl,
           detectedCount: built.detectedWidgets.length,
+          generatedRoles: built.generatedRoles,
         },
       });
     });

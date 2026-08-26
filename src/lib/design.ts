@@ -10,6 +10,7 @@ import {
   availableWidgets,
   mergeRemoteWidgets,
   titleFromDetectedWidgets,
+  type WidgetRole,
 } from "./elementor-widgets";
 import { appRoot, dataDir } from "./paths";
 import type { RemoteElementorWidget, RemotePlugin } from "./wordpress";
@@ -25,6 +26,7 @@ export type DesignBuild = {
   sectionRoles: string[];
   pluginsConsidered: string[];
   detectedWidgets: string[];
+  generatedRoles: WidgetRole[];
 };
 
 function isDesignName(name: string): boolean {
@@ -62,6 +64,8 @@ export async function buildDesignTemplate(options: {
   buffer: Buffer;
   plugins: RemotePlugin[];
   remoteWidgets?: RemoteElementorWidget[];
+  analysis?: DesignAnalysis;
+  generatedRoles?: WidgetRole[];
 }): Promise<DesignBuild> {
   const id = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
   const dir = path.join(dataDir(), "designs", id);
@@ -70,7 +74,7 @@ export async function buildDesignTemplate(options: {
   const sourcePath = path.join(dir, sourceName);
   await writeFile(sourcePath, options.buffer);
 
-  const analysis = await analyzeDesignFile(sourcePath, options.buffer);
+  const analysis = options.analysis ?? (await analyzeDesignFile(sourcePath, options.buffer));
   const widgets = mergeRemoteWidgets(availableWidgets(options.plugins), options.remoteWidgets ?? []);
   const keys = activePluginKeys(options.plugins);
   const title =
@@ -101,5 +105,6 @@ export async function buildDesignTemplate(options: {
     detectedWidgets: widgets
       .filter((widget) => widget.source === "remote")
       .map((widget) => widget.label),
+    generatedRoles: options.generatedRoles ?? [],
   };
 }

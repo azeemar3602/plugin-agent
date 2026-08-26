@@ -1,9 +1,15 @@
 import assert from "node:assert/strict";
+import { mkdtemp, readFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 
 import { buildElementorDocument } from "../src/lib/elementor-builder";
+import { writeGeneratedPlugin } from "../src/lib/generate-widgets";
 import {
   availableWidgets,
   mergeRemoteWidgets,
+  missingLayoutRoles,
+  neededRolesFromAnalysis,
   planPageFromDetectedWidgets,
   titleFromDetectedWidgets,
   type WidgetControl,
@@ -181,3 +187,84 @@ assert.equal(hero.settings?.image && typeof hero.settings.image === "object" && 
   : false, true);
 
 console.log("ok", types.join(" → "));
+
+const needed = neededRolesFromAnalysis([
+  { role: "hero" },
+  { role: "content" },
+  { role: "cta" },
+  { role: "footer" },
+]);
+assert.ok(needed.includes("blogHero"));
+assert.ok(needed.includes("faq"));
+assert.ok(needed.includes("articleCta"));
+assert.deepEqual(missingLayoutRoles(widgets, needed), []);
+
+const coreOnly = mergeRemoteWidgets(availableWidgets(plugins), [
+  { type: "heading", title: "Heading", custom: false, plugin: "elementor" },
+  { type: "html", title: "HTML", custom: false, plugin: "elementor" },
+]);
+const missing = missingLayoutRoles(coreOnly, ["blogHero", "faq", "articleCta"]);
+assert.deepEqual(missing, ["blogHero", "faq", "articleCta"]);
+
+async function testGeneratedPlugin() {
+  const tmp = await mkdtemp(path.join(os.tmpdir(), "pa-widgets-"));
+  await writeGeneratedPlugin(tmp, ["blogHero", "faq"], "1.0.0-test");
+  const php = await readFile(path.join(tmp, "plugin-agent-widgets.php"), "utf8");
+  assert.match(php, /class Plugin_Agent_Widget_Blog_Hero/);
+  assert.match(php, /plugin_agent_blog_hero/);
+  assert.match(php, /class Plugin_Agent_Widget_Faq/);
+  assert.doesNotMatch(php, /Plugin_Agent_Widget_Footer/);
+  assert.match(php, /extends \\Elementor\\Widget_Base/);
+  assert.match(php, /new \\Elementor\\Repeater\(\)/);
+  assert.match(php, /<h1 class="pa-heading">/);
+  assert.match(php, /<\/h1>/);
+  assert.match(php, /function plugin_agent_widgets_register[\s\S]*class Plugin_Agent_Widget_Blog_Hero/);
+  assert.ok(php.indexOf("class Plugin_Agent_Widget_Blog_Hero") > php.indexOf("class_exists('\\Elementor\\Widget_Base')"));
+
+  const generatedPlan = planPageFromDetectedWidgets(
+    mergeRemoteWidgets(availableWidgets([{ file: "elementor/elementor.php", name: "Elementor", status: "active", version: "3" }]), [
+      { type: "heading", title: "Heading", custom: false, plugin: "elementor" },
+      { type: "plugin_agent_blog_hero", title: "Generated Blog Hero", custom: true, plugin: "plugin-agent-widgets" },
+      { type: "plugin_agent_faq", title: "Generated FAQ", custom: true, plugin: "plugin-agent-widgets" },
+    ]),
+  );
+  assert.deepEqual(
+    generatedPlan.map((widget) => widget.type),
+    ["plugin_agent_blog_hero", "plugin_agent_faq"],
+  );
+  const generatedDoc = buildElementorDocument({
+    title: "Generated layout",
+    analysis: { width: 1440, height: 2400, background: "#ffffff", sections: [] },
+    widgets: mergeRemoteWidgets(
+      availableWidgets([{ file: "elementor/elementor.php", name: "Elementor", status: "active", version: "3" }]),
+      [
+        { type: "heading", title: "Heading", custom: false, plugin: "elementor" },
+        { type: "html", title: "HTML", custom: false, plugin: "elementor" },
+        {
+          type: "plugin_agent_blog_hero",
+          title: "Generated Blog Hero",
+          custom: true,
+          plugin: "plugin-agent-widgets",
+          controls: { heading_highlight: { type: "text", default: "design" } },
+        },
+        {
+          type: "plugin_agent_faq",
+          title: "Generated FAQ",
+          custom: true,
+          plugin: "plugin-agent-widgets",
+        },
+      ],
+    ),
+    extras: { donation: false, search: false, form: false, language: false },
+  });
+  assert.ok(generatedDoc.widgetsUsed.includes("plugin_agent_blog_hero"));
+  assert.ok(generatedDoc.widgetsUsed.includes("plugin_agent_faq"));
+  assert.ok(!generatedDoc.widgetsUsed.includes("html"));
+  console.log("generated plugin ok");
+}
+
+testGeneratedPlugin().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
+

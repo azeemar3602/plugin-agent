@@ -98,6 +98,11 @@ function DesignCard({ card }: { card: Extract<AgentCard, { kind: "design" }> }) 
           <p className="mt-1 font-mono text-[11px] text-muted-foreground">
             Widgets: {card.widgetsUsed.join(", ") || "none"}
           </p>
+          {card.generatedRoles?.length ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Generated missing widgets: {card.generatedRoles.join(", ")}
+            </p>
+          ) : null}
           <p className="mt-1 text-xs text-muted-foreground">
             {card.imported
               ? card.pageUrl
@@ -116,10 +121,18 @@ function DesignCard({ card }: { card: Extract<AgentCard, { kind: "design" }> }) 
             </a>
           ) : null}
         </div>
-        <Button size="sm" nativeButton={false} render={<a href={`/api/design/${card.designId}`} />}>
-          <Download />
-          JSON
-        </Button>
+        <div className="flex shrink-0 flex-col gap-2">
+          <Button size="sm" nativeButton={false} render={<a href={`/api/design/${card.designId}`} />}>
+            <Download />
+            JSON
+          </Button>
+          {card.generatedRoles?.length ? (
+            <Button size="sm" nativeButton={false} render={<a href="/api/generated-plugin" />}>
+              <Download />
+              Widgets zip
+            </Button>
+          ) : null}
+        </div>
       </div>
     </div>
   );

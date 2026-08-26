@@ -387,7 +387,8 @@ export function AgentApp() {
             <p className="mt-2 text-xs leading-5 text-muted-foreground">
               Drop a plugin zip, Elementor JSON, and/or a JPEG, PNG, or PDF of a page design. The
               agent lists every Elementor widget on this site, then maps the design onto those
-              widgets — addon widgets first, core widgets only if nothing else fits.
+              widgets. If a needed widget is missing, it generates a real Elementor widget plugin,
+              installs it, and uses that — not an HTML block.
             </p>
             <form
               action="/api/upload"

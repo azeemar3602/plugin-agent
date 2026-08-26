@@ -248,11 +248,13 @@ export function planPageFromDetectedWidgets(widgets: CatalogWidget[]): CatalogWi
   const used = new Set<string>();
   const plan: CatalogWidget[] = [];
   for (const role of LAYOUT_ROLES) {
-    if (role === "header" || role === "footer") continue;
     const matches = addons.filter((widget) => widget.role === role);
     matches.sort((a, b) => scoreWidget(b, role) - scoreWidget(a, role));
     const picked = matches.find((widget) => widget.type !== "html" && !used.has(widget.type));
     if (!picked) continue;
+    if ((role === "header" || role === "footer") && /axion_(header|footer)/.test(picked.type)) {
+      continue;
+    }
     plan.push(picked);
     used.add(picked.type);
   }
@@ -261,6 +263,43 @@ export function planPageFromDetectedWidgets(widgets: CatalogWidget[]): CatalogWi
     return plan.filter((widget) => widget.role !== "authorMeta");
   }
   return plan;
+}
+
+export function addonRolesOnSite(widgets: CatalogWidget[]): Set<WidgetRole> {
+  const roles = new Set<WidgetRole>();
+  for (const widget of widgets) {
+    if (!isAddonWidget(widget)) continue;
+    roles.add(widget.role);
+  }
+  return roles;
+}
+
+export function neededRolesFromAnalysis(sections: Array<{ role: string }>): WidgetRole[] {
+  const out: WidgetRole[] = [];
+  const add = (role: WidgetRole) => {
+    if (!out.includes(role)) out.push(role);
+  };
+  let ctaCount = 0;
+  for (const section of sections) {
+    if (section.role === "hero") add("blogHero");
+    else if (section.role === "features" || section.role === "split") add("takeaways");
+    else if (section.role === "cta") {
+      ctaCount += 1;
+      add(ctaCount === 1 ? "articleCta" : "downloadCta");
+    } else if (section.role === "footer") add("footer");
+    else if (section.role === "content") add("faq");
+    else if (section.role === "media") add("relatedPosts");
+  }
+  if (out.length === 0) {
+    return ["blogHero", "takeaways", "articleCta", "faq", "downloadCta", "relatedPosts"];
+  }
+  add("blogHero");
+  return out;
+}
+
+export function missingLayoutRoles(widgets: CatalogWidget[], needed: WidgetRole[]): WidgetRole[] {
+  const have = addonRolesOnSite(widgets);
+  return needed.filter((role) => !have.has(role));
 }
 
 export function hasDetectedLayout(widgets: CatalogWidget[]): boolean {
@@ -332,7 +371,8 @@ function scoreWidget(widget: CatalogWidget, role: WidgetRole): number {
   if (isAddonWidget(widget)) score += 25;
   if (widget.type !== "html") score += 5;
   const type = widget.type.toLowerCase();
-  if (type.includes("axion_")) score += 8;
+  if (type.startsWith("plugin_agent_")) score += 18;
+  if ((role === "header" || role === "footer") && /axion_(header|footer)/.test(type)) score -= 40;
   if (type.includes("blog_")) score += 6;
   if (role === "faq" && type.includes("blog_faq")) score += 12;
   if (role === "blogHero" && type.includes("blog_hero")) score += 12;
@@ -348,7 +388,7 @@ function scoreWidget(widget: CatalogWidget, role: WidgetRole): number {
 
 const STOCK_MEDIA = {
   hero: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=1400&q=80",
-  logo: "https://placehold.co/180x40/115696/FFFFFF/png?text=Axion",
+  logo: "https://placehold.co/180x40/115696/FFFFFF/png?text=Logo",
   avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=128&h=128&q=80",
 };
 

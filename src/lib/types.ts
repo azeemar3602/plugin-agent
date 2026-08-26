@@ -85,6 +85,7 @@ export type AgentCard =
       imported: boolean;
       pageUrl?: string;
       detectedCount?: number;
+      generatedRoles?: string[];
     };
 
 export type ChatMessage = {
