@@ -117,10 +117,10 @@ function cardShell(column: PlannedColumn, children: ElNode[]): ElNode {
       flex_align_items: "stretch",
       flex_gap: gap(0),
       background_background: "classic",
-      background_color: "#ffffff",
+      background_color: column.cardBg ?? "#ffffff",
       border_border: "solid",
       border_width: { unit: "px", top: "1", right: "1", bottom: "1", left: "1", isLinked: true },
-      border_color: "#e6edf4",
+      border_color: column.cardBg && column.cardBg !== "#ffffff" ? column.cardBg : "#e6edf4",
       border_radius: {
         unit: "px",
         top: "16",
@@ -130,7 +130,7 @@ function cardShell(column: PlannedColumn, children: ElNode[]): ElNode {
         isLinked: true,
       },
       overflow: "hidden",
-      padding: pad("0", "0", "12", "0"),
+      padding: firstIsImage ? pad("0", "0", "12", "0") : pad("22", "20", "22", "20"),
     },
     elements: body,
   };

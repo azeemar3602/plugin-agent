@@ -7,6 +7,8 @@ import { buildElementorDocument } from "../src/lib/elementor-builder";
 import { writeGeneratedPlugin } from "../src/lib/generate-widgets";
 import {
   columnWidths,
+  landingPageTitle,
+  looksLikeLanding,
   planPageLayout,
 } from "../src/lib/layout-plan";
 import {
@@ -284,7 +286,6 @@ const corePlan = planPageLayout({
     background: "#ffffff",
     sections: [
       { role: "hero", y0: 0, y1: 0.2, columns: 2, bg: "#f7f9fb", fg: "#111", imageHeavy: true },
-      { role: "features", y0: 0.2, y1: 0.45, columns: 4, bg: "#fff", fg: "#111", imageHeavy: false },
       { role: "cta", y0: 0.45, y1: 0.6, columns: 1, bg: "#111", fg: "#fff", imageHeavy: false },
     ],
   },
@@ -293,9 +294,8 @@ const corePlan = planPageLayout({
 });
 assert.equal(corePlan[0].columnCount, 2);
 assert.equal(corePlan[0].rows[0].columns.length, 2);
-assert.equal(corePlan[1].columnCount, 4);
-assert.equal(corePlan[1].rows[0].columns.length, 4);
-assert.equal(corePlan[2].columnCount, 1);
+assert.equal(corePlan[1].columnCount, 1);
+assert.equal(corePlan[1].rows[0].columns.length, 1);
 assert.ok(corePlan[0].rows[0].columns[0].widgets.length >= 1);
 assert.ok(corePlan[0].rows[0].columns[1].widgets.length >= 1);
 assert.ok(corePlan[0].rows[0].columns.every((column) => column.widthMobile === 100));
@@ -308,7 +308,7 @@ const coreDoc = buildElementorDocument({
     background: "#ffffff",
     sections: [
       { role: "hero", y0: 0, y1: 0.2, columns: 2, bg: "#f7f9fb", fg: "#111", imageHeavy: true },
-      { role: "features", y0: 0.2, y1: 0.45, columns: 4, bg: "#fff", fg: "#111", imageHeavy: false },
+      { role: "cta", y0: 0.45, y1: 0.6, columns: 1, bg: "#111", fg: "#fff", imageHeavy: false },
     ],
   },
   widgets: coreWidgets,
@@ -317,7 +317,7 @@ const coreDoc = buildElementorDocument({
 const coreJson = JSON.parse(coreDoc.json) as {
   content: Array<{
     elType: string;
-    settings: { flex_direction_mobile?: string; content_width?: string };
+    settings: { flex_direction_mobile?: string; content_width?: string; flex_wrap?: string };
     elements: Array<{
       elType: string;
       isInner?: boolean;
@@ -332,15 +332,55 @@ assert.equal(coreJson.content[0].elements.length, 2);
 assert.ok(coreJson.content[0].elements.every((column) => column.isInner && column.elType === "container"));
 assert.equal(coreJson.content[0].elements[0].settings.width?.size, 50);
 assert.equal(coreJson.content[0].elements[0].settings.width_mobile?.size, 100);
-assert.equal(coreJson.content[1].elements.length, 4);
-assert.equal(coreJson.content[1].elements[0].settings.width?.size, 25);
-assert.equal(coreJson.content[1].elements[0].settings.width_tablet?.size, 48);
-assert.equal(coreJson.content[1].elements[0].settings.width_mobile?.size, 100);
+assert.equal(coreJson.content[1].elements.length, 1);
 assert.equal(coreJson.content[0].settings.flex_wrap, "nowrap");
 assert.ok(coreDoc.sectionRoles.includes("hero 50/50"));
-assert.ok(coreDoc.sectionRoles.includes("features 25/25/25/25"));
+assert.ok(coreDoc.sectionRoles.includes("cta 1-col"));
 assert.ok(coreJson.content[0].elements[0].elements.some((node) => node.widgetType === "heading"));
 assert.ok(coreJson.content[0].elements[1].elements.some((node) => node.widgetType === "image"));
+
+const landingAnalysis = {
+  width: 1440,
+  height: 4200,
+  background: "#ffffff",
+  sections: [
+    { role: "hero", y0: 0, y1: 0.12, columns: 2, bg: "#fff", fg: "#111", imageHeavy: true },
+    { role: "features", y0: 0.12, y1: 0.28, columns: 3, bg: "#fff", fg: "#111", imageHeavy: false },
+    { role: "features", y0: 0.28, y1: 0.42, columns: 3, bg: "#fff", fg: "#111", imageHeavy: false },
+    { role: "media", y0: 0.42, y1: 0.52, columns: 1, bg: "#fff", fg: "#111", imageHeavy: false },
+    { role: "split", y0: 0.52, y1: 0.64, columns: 2, bg: "#fff", fg: "#111", imageHeavy: false },
+    { role: "footer", y0: 0.9, y1: 1, columns: 1, bg: "#002751", fg: "#fff", imageHeavy: false },
+  ],
+};
+assert.equal(looksLikeLanding(landingAnalysis), true);
+assert.equal(landingPageTitle(), "Never Miss Another Client Call");
+
+const landingDoc = buildElementorDocument({
+  title: landingPageTitle(),
+  analysis: landingAnalysis,
+  widgets,
+  extras: { donation: false, search: false, form: false, language: false },
+});
+assert.equal(JSON.parse(landingDoc.json).title, "Never Miss Another Client Call");
+assert.ok(landingDoc.widgetsUsed.includes("heading"));
+assert.ok(landingDoc.widgetsUsed.includes("button"));
+assert.ok(landingDoc.widgetsUsed.includes("image"));
+assert.ok(landingDoc.widgetsUsed.includes("icon-list"));
+assert.ok(landingDoc.widgetsUsed.includes("icon"));
+assert.ok(!landingDoc.widgetsUsed.includes("html"));
+assert.ok(!landingDoc.widgetsUsed.includes("arcadia_axion_header"));
+assert.ok(!landingDoc.widgetsUsed.includes("arcadia_axion_footer"));
+assert.ok(!landingDoc.widgetsUsed.includes("arcadia_axion_blog_faq"));
+assert.ok(!landingDoc.widgetsUsed.includes("arcadia_axion_blog_hero"));
+assert.ok(landingDoc.sectionRoles.some((role) => role.includes("52/48")));
+assert.ok(landingDoc.sectionRoles.some((role) => role.includes("32/32/36")));
+const landingJson = landingDoc.json;
+assert.ok(landingJson.includes("Never Miss Another"));
+assert.ok(landingJson.includes("Book a Demo"));
+assert.ok(landingJson.includes("What does Axion cost?"));
+assert.ok(!landingJson.includes("9:40 AM Gap"));
+assert.ok(!landingJson.includes("How Can Vets Reduce"));
+console.log("landing ok", landingDoc.sectionRoles.join(" → "));
 
 async function testGeneratedPlugin() {
   const tmp = await mkdtemp(path.join(os.tmpdir(), "pa-widgets-"));

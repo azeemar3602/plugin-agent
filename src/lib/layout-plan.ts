@@ -5,7 +5,7 @@ import {
   planPageFromDetectedWidgets,
   settingsFromWidget,
 } from "./elementor-widgets";
-import { ICONS, ICON_IMGS, type ElementorSvgIcon } from "./icons";
+import { ICONS, ICON_IMGS, strokeIcon, type ElementorSvgIcon } from "./icons";
 
 export type DesignSection = {
   role: string;
@@ -35,6 +35,7 @@ export type PlannedColumn = {
   widthMobile: number;
   widgets: PlannedWidget[];
   card?: boolean;
+  cardBg?: string;
   direction?: "row" | "column";
 };
 
@@ -148,11 +149,22 @@ export function layoutSummary(plan: PlannedSection[]): string[] {
   });
 }
 
+export function looksLikeLanding(analysis: DesignAnalysis): boolean {
+  return analysis.sections.some((section) => section.role === "features" || section.columns >= 3);
+}
+
+export function landingPageTitle(): string {
+  return "Never Miss Another Client Call";
+}
+
 export function planPageLayout(options: {
   analysis: DesignAnalysis;
   widgets: CatalogWidget[];
   extras: LayoutExtras;
 }): PlannedSection[] {
+  if (looksLikeLanding(options.analysis)) {
+    return planLandingPage(options.widgets, options.extras);
+  }
   if (hasDetectedLayout(options.widgets) || looksLikeArticle(options.analysis)) {
     return planArticlePage(options.widgets, options.extras);
   }
@@ -161,6 +173,15 @@ export function planPageLayout(options: {
     : defaultPrimitiveSections();
   return sections.map((section, index) => planPrimitiveSection(section, index, options.widgets, options.extras));
 }
+
+const RED = "#E24B4A";
+const GREEN = "#22C55E";
+const LANDING_HERO =
+  "https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=1400&q=80";
+const LANDING_SUPPORT =
+  "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&w=800&q=80";
+const LANDING_DASH =
+  "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1400&q=80";
 
 function looksLikeArticle(analysis: DesignAnalysis): boolean {
   const roles = new Set(analysis.sections.map((section) => section.role));
@@ -210,16 +231,442 @@ function pack(
 function row(
   percents: number[],
   fill: PlannedWidget[][],
-  opts?: { align?: PlannedRow["align"]; card?: boolean; gap?: number },
+  opts?: { align?: PlannedRow["align"]; card?: boolean; cardBg?: string[]; gap?: number },
 ): PlannedRow {
   const columns = columnsFromPercents(percents);
   fill.forEach((widgets, index) => {
     if (columns[index]) {
       columns[index].widgets = widgets;
       if (opts?.card) columns[index].card = true;
+      if (opts?.cardBg?.[index]) columns[index].cardBg = opts.cardBg[index];
     }
   });
   return { columns, align: opts?.align, gap: opts?.gap };
+}
+
+function planLandingPage(widgets: CatalogWidget[], extras: LayoutExtras): PlannedSection[] {
+  const pains = [
+    {
+      n: "1",
+      icon: strokeIcon("phone", RED),
+      title: "Front desk slammed",
+      copy: "Busy front desk, calls on hold, clients get frustrated and hang up.",
+    },
+    {
+      n: "2",
+      icon: strokeIcon("calendar", RED),
+      title: "No-shows",
+      copy: "Missed appointments hurt your schedule and your bottom line.",
+    },
+    {
+      n: "3",
+      icon: strokeIcon("clock", RED),
+      title: "After-hours emergencies",
+      copy: "Calls after hours go unanswered when your team is unavailable.",
+    },
+  ];
+  const gains = [
+    {
+      n: "1",
+      icon: strokeIcon("phone", ACCENT),
+      title: "Catch every call",
+      copy: "Live answer, overflow routing, and a record of every conversation.",
+      featured: false,
+    },
+    {
+      n: "2",
+      icon: strokeIcon("calendar", ACCENT),
+      title: "Fill the schedule",
+      copy: "Two-way reminders and one-tap reschedule so cancellations become openings.",
+      featured: false,
+    },
+    {
+      n: "3",
+      icon: strokeIcon("clock", GOLD),
+      title: "Handle after-hours",
+      copy: "U.S. support and a wait list that works while the clinic is closed.",
+      featured: true,
+    },
+  ];
+
+  const nav = row(
+    [22, 50, 28],
+    [
+      [heading(widgets, "AXION", { as: "h3", color: WHITE, px: 22 })],
+      [
+        primitive(widgets, "text", {
+          editor: `<p style="margin:0;text-align:center">${["Products", "Solutions", "Company", "Resources", "Our Network"]
+            .map((link) => `<a href="#" style="color:#ffffff;text-decoration:none;margin:0 12px;font-weight:500;font-size:14px">${link}</a>`)
+            .join("")}</p>`,
+          align: "center",
+          text_color: WHITE,
+        }),
+      ],
+      [
+        goldButton(widgets, "Let's Get Started", true),
+        primitive(widgets, "text", {
+          editor: `<p style="margin:0"><a href="#" style="color:#ffffff;text-decoration:none;font-weight:600;font-size:14px">${ICON_IMGS.user}Login</a></p>`,
+          align: "right",
+          text_color: WHITE,
+        }),
+      ],
+    ],
+    { align: "center" },
+  );
+  nav.columns[2].direction = "row";
+
+  const form = extras.form
+    ? [{ widget: pickWidget("form", widgets), settings: { shortcode: pickWidget("form", widgets).shortcode || "[contact-form]" } }]
+    : [
+        primitive(widgets, "text", {
+          editor:
+            '<p style="margin:0 0 10px"><input type="text" placeholder="Full name" style="width:100%;box-sizing:border-box;border:1px solid #e6edf4;background:#f4f7fb;border-radius:10px;padding:14px 16px;font-size:15px" /></p><p style="margin:0 0 10px"><input type="email" placeholder="Email" style="width:100%;box-sizing:border-box;border:1px solid #e6edf4;background:#f4f7fb;border-radius:10px;padding:14px 16px;font-size:15px" /></p><p style="margin:0 0 16px"><input type="text" placeholder="Practice name" style="width:100%;box-sizing:border-box;border:1px solid #e6edf4;background:#f4f7fb;border-radius:10px;padding:14px 16px;font-size:15px" /></p>',
+          align: "left",
+        }),
+        goldButton(widgets, "Book My Live Demo", true, "left"),
+      ];
+
+  const demo = row(
+    [50, 50],
+    [
+      [
+        heading(widgets, "See Axion on a live clinic day", { as: "h2", color: NAVY, px: 28 }),
+        bodyText(widgets, "<p>Tell us the practice name. We will show the routing, reminders, and after-hours flow.</p>"),
+        ...form,
+      ],
+      [
+        primitive(widgets, "image", {
+          image: { url: LANDING_SUPPORT, id: "", alt: "Support specialist", source: "url" },
+          image_size: "full",
+          align: "center",
+          border_radius: { unit: "%", top: "50", right: "50", bottom: "50", left: "50", isLinked: true },
+        }),
+        bodyText(
+          widgets,
+          "<p>Live U.S. support · Average answer time under a minute · Help that knows clinics</p>",
+          "#e8eef4",
+        ),
+      ],
+    ],
+    { align: "center", gap: 32 },
+  );
+  demo.columns[0].card = true;
+  demo.columns[0].cardBg = WHITE;
+
+  return [
+    pack(
+      "header",
+      "Top bar",
+      [
+        row(
+          [100],
+          [
+            [
+              primitive(widgets, "text", {
+                editor: `<p style="margin:0;text-align:right;font-size:13px;color:${MUTED}">${ICON_IMGS.clock}Mon – Fri — 8:30 – 6:30 &nbsp;&nbsp;|&nbsp;&nbsp; ${ICON_IMGS.phone}Call Us: <strong style="color:${INK}">(855) 982-9466</strong></p>`,
+                align: "right",
+                text_color: MUTED,
+              }),
+            ],
+          ],
+        ),
+      ],
+      { fullBleed: true, boxedWidth: 1180, pad: "tight" },
+    ),
+    pack("header", "Main nav", [nav], {
+      fg: WHITE,
+      fullBleed: true,
+      boxedWidth: 1180,
+      pad: "tight",
+      banner: { color: NAVY, radius: 48, compact: true },
+    }),
+    pack(
+      "hero",
+      "Landing hero",
+      [
+        row(
+          [52, 48],
+          [
+            [
+              primitive(widgets, "text", {
+                editor: `<p style="margin:0 0 8px;letter-spacing:.14em;font-size:12px;font-weight:700;color:${ACCENT}">BUILT FOR VETERINARY PRACTICES</p>`,
+                align: "left",
+                text_color: ACCENT,
+              }),
+              richTitle(widgets, `Never Miss Another ${mark("Client Call.")}`, "h1", 48),
+              bodyText(
+                widgets,
+                "<p>Missed calls cost veterinary practices time, clients, and revenue. Axion makes sure every call is answered, every time.</p>",
+              ),
+              takeawayList(widgets, [
+                "Increase revenue from recovered calls",
+                "Reduce no-shows with two-way reminders",
+                "Delight clients who reach a person, not a recording",
+                "Cover after-hours without a voicemail dead end",
+              ], ICONS.checkGreen),
+              goldButton(widgets, "Book a Demo", true, "left"),
+              primitive(widgets, "text", {
+                editor: `<p style="margin:8px 0 0;color:${MUTED}">15 minutes. No pressure.</p>`,
+                align: "left",
+                text_color: MUTED,
+              }),
+            ],
+            [
+              primitive(widgets, "image", {
+                image: { url: LANDING_HERO, id: "", alt: "Veterinarian with a golden retriever", source: "url" },
+                image_size: "full",
+                align: "center",
+                border_radius: { unit: "px", top: "22", right: "22", bottom: "22", left: "22", isLinked: true },
+              }),
+            ],
+          ],
+          { align: "center", gap: 32 },
+        ),
+      ],
+      { boxedWidth: 1180, pad: "hero" },
+    ),
+    pack(
+      "cta",
+      "Trusted by",
+      [
+        row(
+          [38, 62],
+          [
+            [heading(widgets, "Trusted by hundreds of veterinary practices", { as: "h3", color: WHITE, px: 20 })],
+            [
+              primitive(widgets, "text", {
+                editor:
+                  '<p style="margin:0;color:#d7e4f2;letter-spacing:.04em;font-weight:700">OTTO &nbsp;·&nbsp; COVETRUS &nbsp;·&nbsp; AVIMARK &nbsp;·&nbsp; PULSE &nbsp;·&nbsp; EZYVET</p>',
+                align: "right",
+                text_color: "#d7e4f2",
+              }),
+            ],
+          ],
+          { align: "center" },
+        ),
+      ],
+      { bg: NAVY, fullBleed: true, boxedWidth: 1180, pad: "tight" },
+    ),
+    pack(
+      "features",
+      "Pain points",
+      [
+        row([100], [[richTitle(widgets, `Just A Few ${mark("Pain Points", RED)} We Solve`, "h2", 36)]]),
+        row(
+          [32, 32, 36],
+          pains.map((item) => [
+            heading(widgets, item.n, { as: "h3", color: RED, px: 28 }),
+            bannerIcon(widgets, item.icon, RED),
+            heading(widgets, item.title, { as: "h3", color: RED, px: 20 }),
+            bodyText(widgets, `<p>${item.copy}</p>`),
+          ]),
+          { card: true, cardBg: ["#FDECEC", "#FDECEC", "#FDECEC"], align: "stretch", gap: 20 },
+        ),
+      ],
+      { boxedWidth: 1180 },
+    ),
+    pack(
+      "features",
+      "What you gain",
+      [
+        row([100], [[heading(widgets, "What you gain", { as: "h2", color: NAVY, px: 34 })]]),
+        row(
+          [32, 32, 36],
+          gains.map((item) => [
+            heading(widgets, item.n, { as: "h3", color: item.featured ? GOLD : ACCENT, px: 28 }),
+            bannerIcon(widgets, item.icon, item.featured ? GOLD : ACCENT),
+            heading(widgets, item.title, { as: "h3", color: item.featured ? WHITE : NAVY, px: 20 }),
+            bodyText(widgets, `<p>${item.copy}</p>`, item.featured ? "#e8eef4" : INK),
+          ]),
+          { card: true, cardBg: ["#ffffff", "#ffffff", NAVY], align: "stretch", gap: 20 },
+        ),
+        row(
+          [40, 60],
+          [
+            [goldButton(widgets, "Book a Demo", true, "left")],
+            [
+              primitive(widgets, "text", {
+                editor: `<p style="margin:0"><a href="#" style="color:${NAVY};font-weight:700;text-decoration:none">Watch a 1-minute highlight video</a></p>`,
+                align: "left",
+                text_color: NAVY,
+              }),
+            ],
+          ],
+          { align: "center" },
+        ),
+      ],
+      { boxedWidth: 1180 },
+    ),
+    pack(
+      "media",
+      "Integrations",
+      [
+        row([100], [[richTitle(widgets, `Works Seamlessly With ${mark("Your Practice Software")}`, "h2", 32)]]),
+        row(
+          [100],
+          [
+            [
+              primitive(widgets, "text", {
+                editor:
+                  '<p style="margin:0;text-align:center;font-weight:700;letter-spacing:.06em;color:#5b6b7c">OTTO &nbsp;&nbsp; COVETRUS &nbsp;&nbsp; AVIMARK &nbsp;&nbsp; PULSE &nbsp;&nbsp; EZYVET &nbsp;&nbsp; DAYSMART</p>',
+                align: "center",
+                text_color: MUTED,
+              }),
+            ],
+          ],
+        ),
+      ],
+      { boxedWidth: 1180 },
+    ),
+    pack(
+      "split",
+      "Proof",
+      [
+        row(
+          [55, 45],
+          [
+            [
+              bodyText(
+                widgets,
+                "<p>“We recovered missed calls the first week. The front desk stayed with patients instead of the phone.”</p>",
+              ),
+              primitive(widgets, "text", {
+                editor: `<p style="margin:0;display:flex;align-items:center;gap:10px"><img src="${AVATAR}" alt="" width="40" height="40" style="width:40px;height:40px;border-radius:50%" /> <strong>Jeff Falkner</strong> · Practice manager</p>`,
+                align: "left",
+              }),
+            ],
+            [
+              heading(widgets, "312", { as: "h2", color: NAVY, px: 56 }),
+              heading(widgets, "Missed calls recovered", { as: "h3", color: ACCENT, px: 20 }),
+              bodyText(widgets, "<p>In the last 60 days by Axion customers.</p>"),
+            ],
+          ],
+          { card: true, cardBg: [TAG_BG, WHITE], align: "center", gap: 28 },
+        ),
+      ],
+      { boxedWidth: 1180 },
+    ),
+    pack(
+      "content",
+      "Compare",
+      [
+        row([100], [[richTitle(widgets, `Axion Vs. ${mark("Others")}`, "h2", 32)]]),
+        row(
+          [34, 33, 33],
+          [
+            [
+              heading(widgets, "Feature", { as: "h4", color: MUTED, px: 14 }),
+              bodyText(
+                widgets,
+                "<p>Unlimited users<br>Two-way texting<br>Live answer<br>After-hours coverage<br>Practice software sync<br>U.S. support</p>",
+              ),
+            ],
+            [
+              heading(widgets, "Axion", { as: "h4", color: WHITE, px: 14 }),
+              bodyText(widgets, "<p>Included<br>Included<br>Included<br>Included<br>Included<br>Included</p>", WHITE),
+            ],
+            [
+              heading(widgets, "Others", { as: "h4", color: NAVY, px: 14 }),
+              bodyText(
+                widgets,
+                `<p style="color:${RED}">Limited / add-on<br>Limited<br>Not always<br>Not always<br>Extra fee<br>Offshore / mixed</p>`,
+                RED,
+              ),
+            ],
+          ],
+          { card: true, cardBg: ["#ffffff", NAVY, "#eef6ff"], align: "stretch" },
+        ),
+      ],
+      { boxedWidth: 1180 },
+    ),
+    pack(
+      "cta",
+      "Book demo",
+      [demo],
+      { bg: NAVY, boxedWidth: 1180, banner: { color: NAVY, radius: 28 } },
+    ),
+    pack(
+      "faq",
+      "FAQ",
+      [
+        row([100], [[richTitle(widgets, `Frequently Asked ${mark("Questions")}`, "h2", 36)]]),
+        row([100], [[landingFaq(widgets)]]),
+      ],
+      { boxedWidth: 800 },
+    ),
+    pack(
+      "cta",
+      "Always answers",
+      [
+        row(
+          [48, 52],
+          [
+            [
+              heading(widgets, "Be the clinic that always answers", { as: "h2", color: WHITE, px: 32 }),
+              bodyText(widgets, "<p>Schedule a 15-minute walkthrough of routing, reminders, and the after-hours queue.</p>", "#e8eef4"),
+              goldButton(widgets, "Schedule A 15-Minute Demo", true),
+            ],
+            [
+              primitive(widgets, "image", {
+                image: { url: LANDING_DASH, id: "", alt: "Axion dashboard", source: "url" },
+                image_size: "full",
+                align: "center",
+                border_radius: { unit: "px", top: "16", right: "16", bottom: "16", left: "16", isLinked: true },
+              }),
+            ],
+          ],
+          { align: "center" },
+        ),
+      ],
+      { boxedWidth: 1180, banner: { color: NAVY, radius: 28 } },
+    ),
+    pack(
+      "footer",
+      "Footer",
+      [
+        row(
+          [28, 18, 18, 18, 18],
+          [
+            [
+              heading(widgets, "AXION", { as: "h3", color: WHITE, px: 24 }),
+              bodyText(
+                widgets,
+                "<p>All-in-one business communication — VoIP, messaging, VFAX and AI on one reliable cloud platform.</p>",
+                "#d7e4f2",
+              ),
+              heading(widgets, "(855) 982-9466", { as: "h4", color: GOLD, px: 20 }),
+            ],
+            footerLinks(widgets, "Products", ["Softphone", "PBX", "SMS", "VFax"]),
+            footerLinks(widgets, "Solutions", ["Healthcare", "Real Estate", "Finance", "Logistics"]),
+            footerLinks(widgets, "Company", ["About", "Network", "Careers", "Contact"]),
+            footerLinks(widgets, "Resources", ["Docs", "Status", "Security", "Pricing"]),
+          ],
+          { align: "flex-start" },
+        ),
+        row(
+          [50, 50],
+          [
+            [
+              primitive(widgets, "text", {
+                editor: "<p>© 2026 Axion Communications. All rights reserved.</p>",
+                align: "left",
+                text_color: "#d7e4f2",
+              }),
+            ],
+            [
+              primitive(widgets, "text", {
+                editor: "<p>Privacy · Terms · Security</p>",
+                align: "right",
+                text_color: "#d7e4f2",
+              }),
+            ],
+          ],
+          { align: "center" },
+        ),
+      ],
+      { bg: NAVY, fg: WHITE, fullBleed: true, boxedWidth: 1180, gradient: { from: NAVY, to: FOOTER_TO } },
+    ),
+  ];
 }
 
 function articleTitle(hero: Record<string, unknown>): string {
@@ -550,8 +997,8 @@ function heading(
   });
 }
 
-function mark(word: string): string {
-  return `<span style="color:${ACCENT}">${word}</span>`;
+function mark(word: string, color = ACCENT): string {
+  return `<span style="color:${color}">${word}</span>`;
 }
 
 function richTitle(widgets: CatalogWidget[], html: string, as: "h1" | "h2", px: number): PlannedWidget {
@@ -601,29 +1048,70 @@ function bannerIcon(
   });
 }
 
-function takeawayList(widgets: CatalogWidget[]): PlannedWidget {
+function takeawayList(
+  widgets: CatalogWidget[],
+  items: string[] = TAKEAWAYS,
+  icon: ElementorSvgIcon = ICONS.dot,
+): PlannedWidget {
   const list = widgets.find((widget) => widget.type === "icon-list");
+  const check = icon === ICONS.checkGreen || icon === ICONS.checkWhite;
   if (list) {
     return {
       widget: list,
       settings: {
-        icon_list: TAKEAWAYS.map((text) => ({
+        icon_list: items.map((text) => ({
           text,
-          selected_icon: ICONS.dot,
+          selected_icon: icon,
           link: { url: "", is_external: "", nofollow: "" },
         })),
         text_color: INK,
-        icon_color: INK,
+        icon_color: check ? GREEN : INK,
         space_between: { unit: "px", size: 14 },
-        icon_size: { unit: "px", size: 8 },
+        icon_size: { unit: "px", size: check ? 16 : 8 },
       },
     };
   }
   return primitive(widgets, "text", {
-    editor: `<ul>${TAKEAWAYS.map((text) => `<li>${text}</li>`).join("")}</ul>`,
+    editor: `<ul>${items.map((text) => `<li>${text}</li>`).join("")}</ul>`,
     align: "left",
     text_color: INK,
   });
+}
+
+function landingFaq(widgets: CatalogWidget[]): PlannedWidget {
+  const widget =
+    widgets.find((item) => item.type === "accordion" || item.type === "nested-accordion" || item.type === "toggle") ??
+    pickWidget("faq", widgets);
+  const items = [
+    {
+      tab_title: "What does Axion cost?",
+      tab_content:
+        "<p>Plans are based on call volume and seats. The 15-minute demo walks a clinic-sized setup — pricing is on the table, not a bait-and-switch.</p>",
+    },
+    {
+      tab_title: "Does it work with our practice software?",
+      tab_content:
+        "<p>Yes. Axion syncs with Avimark, Pulse, ezyVet, Impromed, and other common veterinary practice systems.</p>",
+    },
+    {
+      tab_title: "Do we need new phones?",
+      tab_content:
+        "<p>No. Keep the numbers clients already know. Axion sits in front of the existing lines and the mobile app.</p>",
+    },
+    {
+      tab_title: "What happens after hours?",
+      tab_content:
+        "<p>Live U.S. support answers, books, and escalates emergencies instead of sending callers to voicemail.</p>",
+    },
+  ];
+  return {
+    widget,
+    settings: {
+      ...settingsFromWidget(widget),
+      tabs: items,
+      items,
+    },
+  };
 }
 
 function accordion(widgets: CatalogWidget[]): PlannedWidget {
@@ -652,11 +1140,16 @@ function accordion(widgets: CatalogWidget[]): PlannedWidget {
   };
 }
 
-function goldButton(widgets: CatalogWidget[], text: string, arrow = false): PlannedWidget {
+function goldButton(
+  widgets: CatalogWidget[],
+  text: string,
+  arrow = false,
+  align = "center",
+): PlannedWidget {
   return primitive(widgets, "button", {
     text,
     size: "lg",
-    align: "center",
+    align,
     background_color: GOLD,
     button_text_color: "#000000",
     border_radius: { unit: "px", top: "40", right: "40", bottom: "40", left: "40", isLinked: true },

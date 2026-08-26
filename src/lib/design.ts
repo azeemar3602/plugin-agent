@@ -5,6 +5,7 @@ import { promisify } from "node:util";
 
 import { analyzeDesignBuffer } from "./analyze-image";
 import { buildElementorDocument, type DesignAnalysis } from "./elementor-builder";
+import { landingPageTitle, looksLikeLanding } from "./layout-plan";
 import {
   activePluginKeys,
   availableWidgets,
@@ -77,8 +78,9 @@ export async function buildDesignTemplate(options: {
   const analysis = options.analysis ?? (await analyzeDesignFile(sourcePath, options.buffer));
   const widgets = mergeRemoteWidgets(availableWidgets(options.plugins), options.remoteWidgets ?? []);
   const keys = activePluginKeys(options.plugins);
-  const title =
-    titleFromDetectedWidgets(widgets) || `Design: ${sourceName.replace(/\.[^.]+$/, "")}`;
+  const title = looksLikeLanding(analysis)
+    ? landingPageTitle()
+    : titleFromDetectedWidgets(widgets) || `Design: ${sourceName.replace(/\.[^.]+$/, "")}`;
   const built = buildElementorDocument({
     title,
     analysis,
