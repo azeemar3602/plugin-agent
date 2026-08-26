@@ -120,7 +120,7 @@ export function columnWidths(count: number): Array<{ desktop: number; tablet: nu
   const base = Math.floor(100 / n);
   const desktop = Array.from({ length: n }, (_, i) => (i === n - 1 ? 100 - base * (n - 1) : base));
   const tablet =
-    n === 1 ? [100] : n === 3 ? [50, 50, 100] : Array.from({ length: n }, () => (n >= 2 ? 50 : 100));
+    n === 1 ? [100] : n === 3 ? [50, 50, 100] : Array.from({ length: n }, () => (n >= 4 ? 48 : 50));
   return desktop.map((size, i) => ({
     desktop: size,
     tablet: tablet[i] ?? 100,
@@ -133,7 +133,7 @@ export function columnsFromPercents(percents: number[]): PlannedColumn[] {
   const stackTablet = n === 3 || (n === 2 && percents.some((value) => value >= 65));
   return percents.map((percent) => ({
     width: percent,
-    widthTablet: n === 1 ? 100 : stackTablet ? 100 : n >= 4 ? 50 : n === 2 ? 50 : 50,
+    widthTablet: n === 1 ? 100 : stackTablet ? 100 : n >= 4 ? 48 : 50,
     widthMobile: 100,
     widgets: [],
   }));

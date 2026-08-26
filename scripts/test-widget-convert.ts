@@ -255,7 +255,7 @@ assert.deepEqual(columnWidths(2), [
   { desktop: 50, tablet: 50, mobile: 100 },
 ]);
 assert.deepEqual(columnWidths(4).map((col) => col.desktop), [25, 25, 25, 25]);
-assert.ok(columnWidths(4).every((col) => col.tablet === 50 && col.mobile === 100));
+assert.ok(columnWidths(4).every((col) => col.tablet === 48 && col.mobile === 100));
 
 const corePlugins = [{ file: "elementor/elementor.php", name: "Elementor", status: "active", version: "3" }];
 const coreWidgets = mergeRemoteWidgets(availableWidgets(corePlugins), [
@@ -323,8 +323,9 @@ assert.equal(coreJson.content[0].elements[0].settings.width?.size, 50);
 assert.equal(coreJson.content[0].elements[0].settings.width_mobile?.size, 100);
 assert.equal(coreJson.content[1].elements.length, 4);
 assert.equal(coreJson.content[1].elements[0].settings.width?.size, 25);
-assert.equal(coreJson.content[1].elements[0].settings.width_tablet?.size, 50);
+assert.equal(coreJson.content[1].elements[0].settings.width_tablet?.size, 48);
 assert.equal(coreJson.content[1].elements[0].settings.width_mobile?.size, 100);
+assert.equal(coreJson.content[0].settings.flex_wrap, "nowrap");
 assert.ok(coreDoc.sectionRoles.includes("hero 50/50"));
 assert.ok(coreDoc.sectionRoles.includes("features 25/25/25/25"));
 assert.ok(coreJson.content[0].elements[0].elements.some((node) => node.widgetType === "heading"));
