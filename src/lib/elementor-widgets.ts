@@ -51,6 +51,7 @@ const CORE_WIDGET_TYPES = new Set([
   "button",
   "image",
   "icon",
+  "icon-list",
   "icon-box",
   "image-box",
   "image-gallery",
@@ -325,6 +326,13 @@ export function titleFromDetectedWidgets(widgets: CatalogWidget[]): string | und
   if (typeof settings.title === "string" && settings.title.trim()) return settings.title.trim();
   if (typeof settings.heading === "string" && settings.heading.trim()) return settings.heading.trim();
   return undefined;
+}
+
+export function isFullBleedAxionWidget(widget: CatalogWidget): boolean {
+  if (widget.plugin !== "arcadia-elementor-addons") return false;
+  return /axion_(header|footer|blog_hero|key_takeaways|blog_faq|article_cta|download_cta|blog_related)/.test(
+    widget.type,
+  );
 }
 
 export function pickWidget(role: WidgetRole, widgets: CatalogWidget[]): CatalogWidget {

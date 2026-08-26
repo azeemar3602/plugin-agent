@@ -68,6 +68,9 @@ function normalizeRepeaterFields(settings: Record<string, unknown>): Record<stri
 }
 
 function innerContainer(column: PlannedColumn, index: number): ElNode {
+  const direction = column.direction ?? "column";
+  const widgetNodes = column.widgets.map((item) => widgetNode(item.widget, item.settings));
+  const children = column.card ? [cardShell(column, widgetNodes)] : widgetNodes;
   return {
     id: eid(),
     elType: "container",
@@ -76,10 +79,13 @@ function innerContainer(column: PlannedColumn, index: number): ElNode {
       _title: `Column ${index + 1}`,
       container_type: "flex",
       content_width: "full",
-      flex_direction: "column",
-      flex_align_items: "stretch",
-      flex_gap: gap(12),
+      flex_direction: direction,
+      flex_align_items: direction === "row" ? "center" : "stretch",
+      flex_justify_content: direction === "row" ? "flex-end" : "flex-start",
+      flex_wrap: direction === "row" ? "nowrap" : "wrap",
+      flex_gap: gap(direction === "row" ? 14 : 12),
       flex_gap_mobile: gap(10),
+      flex_direction_mobile: column.direction === "row" ? "row" : "column",
       flex_size: "none",
       width: { unit: "%", size: column.width },
       width_tablet: { unit: "%", size: column.widthTablet },
@@ -87,7 +93,60 @@ function innerContainer(column: PlannedColumn, index: number): ElNode {
       padding: pad("0", "0", "0", "0"),
       padding_mobile: pad("0", "0", "0", "0"),
     },
-    elements: column.widgets.map((item) => widgetNode(item.widget, item.settings)),
+    elements: children,
+  };
+}
+
+function cardShell(column: PlannedColumn, children: ElNode[]): ElNode {
+  const firstIsImage = column.widgets[0]?.widget.type === "image";
+  const body = firstIsImage && children.length > 1 ? [children[0], paddedStack(children.slice(1))] : children;
+  return {
+    id: eid(),
+    elType: "container",
+    isInner: true,
+    settings: {
+      _title: "Card",
+      container_type: "flex",
+      content_width: "full",
+      width: { unit: "%", size: 100 },
+      flex_direction: "column",
+      flex_align_items: "stretch",
+      flex_gap: gap(0),
+      background_background: "classic",
+      background_color: "#ffffff",
+      border_border: "solid",
+      border_width: { unit: "px", top: "1", right: "1", bottom: "1", left: "1", isLinked: true },
+      border_color: "#e6edf4",
+      border_radius: {
+        unit: "px",
+        top: "16",
+        right: "16",
+        bottom: "16",
+        left: "16",
+        isLinked: true,
+      },
+      overflow: "hidden",
+      padding: pad("0", "0", "12", "0"),
+    },
+    elements: body,
+  };
+}
+
+function paddedStack(children: ElNode[]): ElNode {
+  return {
+    id: eid(),
+    elType: "container",
+    isInner: true,
+    settings: {
+      _title: "Card body",
+      container_type: "flex",
+      content_width: "full",
+      width: { unit: "%", size: 100 },
+      flex_direction: "column",
+      flex_gap: gap(6),
+      padding: pad("12", "16", "8", "16"),
+    },
+    elements: children,
   };
 }
 
@@ -104,7 +163,7 @@ function rowContainer(row: PlannedRow): ElNode {
       width: { unit: "%", size: 100 },
       flex_direction: "row",
       flex_wrap: "wrap",
-      flex_align_items: "center",
+      flex_align_items: row.align ?? "flex-start",
       flex_justify_content: multi ? "space-between" : "flex-start",
       flex_gap: gap(multi ? 24 : 0),
       flex_direction_tablet: row.columns.some((column) => column.widthTablet === 100) ? "column" : "row",
@@ -156,9 +215,15 @@ function bannerWrap(section: PlannedSection, children: ElNode[]): ElNode {
 }
 
 function sectionPadding(section: PlannedSection) {
-  if (section.analysisRole === "header") {
+  const none = {
+    desktop: pad("0", "0", "0", "0"),
+    tablet: pad("0", "0", "0", "0"),
+    mobile: pad("0", "0", "0", "0"),
+  };
+  if (section.pad === "none") return none;
+  if (section.analysisRole === "header" || section.pad === "tight") {
     return {
-      desktop: pad("10", "24", "10", "24"),
+      desktop: pad("12", "24", "12", "24"),
       tablet: pad("10", "20", "10", "20"),
       mobile: pad("8", "16", "8", "16"),
     };

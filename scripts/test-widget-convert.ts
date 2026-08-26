@@ -157,8 +157,10 @@ const built = buildElementorDocument({
 });
 
 assert.ok(!built.widgetsUsed.includes("html"), `HTML widget leaked: ${built.widgetsUsed.join(", ")}`);
-assert.ok(built.widgetsUsed.includes("arcadia_axion_key_takeaways"));
+assert.ok(!built.widgetsUsed.includes("arcadia_axion_key_takeaways"));
 assert.ok(built.widgetsUsed.includes("arcadia_axion_blog_faq"));
+assert.ok(built.widgetsUsed.includes("icon-list"));
+assert.ok(built.widgetsUsed.includes("icon"));
 assert.ok(!built.widgetsUsed.includes("arcadia_axion_header"));
 assert.ok(!built.widgetsUsed.includes("arcadia_axion_footer"));
 
@@ -197,22 +199,35 @@ assert.equal(doc.title, "Vets Reduce No-Shows");
 assert.ok(doc.content.every((section) => section.elType === "container"));
 assert.ok(doc.content.every((section) => section.isInner === false));
 assert.ok(built.sectionRoles.some((role) => role.startsWith("hero ") && role.includes("58/42")));
-assert.ok(built.sectionRoles.some((role) => role.startsWith("cta ") && role.includes("70/30")));
+assert.ok(built.sectionRoles.some((role) => role.startsWith("cta ") && role.includes("12/58/30")));
 assert.ok(built.sectionRoles.some((role) => role.includes("25/25/25/25")));
 const allWidgets = walkWidgets(doc.content);
 const types = allWidgets.map((node) => node.widgetType).filter(Boolean);
-assert.ok(types.includes("arcadia_axion_key_takeaways"));
+assert.ok(!types.includes("arcadia_axion_key_takeaways"));
 assert.ok(types.includes("arcadia_axion_blog_faq"));
 assert.ok(!types.includes("arcadia_axion_header"));
 assert.ok(!types.includes("arcadia_axion_footer"));
 assert.ok(types.includes("heading"));
 assert.ok(types.includes("button"));
 assert.ok(types.includes("image"));
+assert.ok(types.includes("icon-list"));
 
 const heroHeading = allWidgets.find(
-  (node) => node.widgetType === "heading" && String(node.settings?.title ?? "").includes("No-Shows"),
+  (node) => node.widgetType === "heading" && String(node.settings?.title ?? "").includes("How Can Vets"),
 );
 assert.ok(heroHeading);
+assert.equal(heroHeading?.settings?.size, "xxl");
+assert.equal(heroHeading?.settings?.typography_typography, "custom");
+assert.equal((heroHeading?.settings?.typography_font_size as { size?: number } | undefined)?.size, 52);
+
+const demoButton = allWidgets.find(
+  (node) => node.widgetType === "button" && String(node.settings?.text ?? "").includes("Schedule A Demo"),
+);
+assert.ok(demoButton);
+assert.equal(demoButton?.settings?.size, "lg");
+
+const faqSection = doc.content.find((section) => section.settings && (section.settings as { padding?: { top?: string } }).padding?.top === "0");
+assert.ok(faqSection, "FAQ Axion band should have zero extra Elementor padding");
 
 console.log("ok", built.sectionRoles.join(" → "));
 
