@@ -38,7 +38,7 @@ A design file is turned into Elementor JSON from the layout in the mockup, using
 
 1. The helper lists every Elementor widget (core + addons).
 2. Plugin Agent splits the mockup into **sections**, then counts **columns** in each section.
-3. It builds Elementor **containers** first (one outer container per section, inner containers per column), then drops widgets into those columns.
+3. It builds Elementor **containers** first (one outer container per section), then **columns** (inner containers), then drops **widgets** into those columns. Backgrounds live on the section/column. Each widget gets its own spacing and color settings. Extra Banner/Card wrappers are not added.
 4. Responsive settings are written in: desktop keeps the planned columns, tablet wraps to two where needed, mobile stacks to one column.
 5. Addon widgets win over Elementor core. If the design needs a widget the site does not have, Plugin Agent **generates** a real Elementor widget plugin (`Plugin Agent Widgets`), installs it, and converts with those widgets. It does not drop HTML blocks as a substitute.
 6. Before import it **rewrites** leftover Text Editor/HTML that is actually a title, list, or icon row into Heading / Icon List / Icon Box. You should not have to catch that in Elementor.

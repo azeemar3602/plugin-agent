@@ -82,21 +82,6 @@ function listItemsFromHtml(html: string): { items: string[]; layout: "traditiona
   return null;
 }
 
-function looksLikeIconCardHtml(html: string): boolean {
-  return /<img\b[^>]*(?:width|height)\s*=\s*["'](?:1\d|2\d)["']/i.test(html) && /<(h[1-4]|div|p)\b/i.test(html);
-}
-
-function iconBoxFromHtml(html: string): { title: string; copy: string } | null {
-  if (!looksLikeIconCardHtml(html)) return null;
-  const title =
-    innerText((html.match(/<(?:h[1-4]|div)[^>]*>([\s\S]*?)<\/(?:h[1-4]|div)>/i) || [])[1] || "") ||
-    innerText(html).split("\n")[0] ||
-    "";
-  const copy = innerText((html.match(/<p\b[^>]*>([\s\S]*?)<\/p>/i) || [])[1] || "");
-  if (!title || title.length > 80) return null;
-  return { title, copy };
-}
-
 function isBrokenSvgIcon(value: unknown): boolean {
   if (!value || typeof value !== "object") return false;
   const rec = value as { library?: string; value?: { url?: string } };
@@ -121,6 +106,7 @@ function headingNode(as: "h1" | "h2" | "h3" | "h4", title: string, align?: unkno
   return {
     id: nid(),
     elType: "widget",
+    isInner: false,
     widgetType: "heading",
     settings: {
       title,
@@ -144,6 +130,7 @@ function iconListNode(
   return {
     id: nid(),
     elType: "widget",
+    isInner: false,
     widgetType: "icon-list",
     settings: {
       icon_list: items.map((text) => ({
@@ -157,26 +144,6 @@ function iconListNode(
       icon_size: { unit: "px", size: logo ? 8 : 16 },
       space_between: { unit: "px", size: logo ? 22 : 14 },
       view: layout,
-    },
-    elements: [],
-  };
-}
-
-function iconBoxNode(title: string, copy: string): ElNode {
-  return {
-    id: nid(),
-    elType: "widget",
-    widgetType: "icon-box",
-    settings: {
-      selected_icon: FA.check,
-      title_text: title,
-      description_text: copy,
-      title_size: "h4",
-      view: "stacked",
-      shape: "circle",
-      position: "left",
-      primary_color: "#ffffff",
-      icon_secondary_color: "#22C55E",
     },
     elements: [],
   };
@@ -207,12 +174,6 @@ function rewriteTextLike(node: ElNode, repairs: WidgetRepair[]): ElNode[] {
       reason: list.layout === "inline" ? "logo/link row in a text editor" : "list in a text editor",
     });
     return [iconListNode(list.items, list.layout, node.settings.text_color)];
-  }
-
-  const box = iconBoxFromHtml(html);
-  if (box) {
-    repairs.push({ from: node.widgetType || "text-editor", to: "icon-box", reason: "icon + title + copy in a text editor" });
-    return [iconBoxNode(box.title, box.copy)];
   }
 
   return [node];

@@ -317,12 +317,18 @@ const coreDoc = buildElementorDocument({
 const coreJson = JSON.parse(coreDoc.json) as {
   content: Array<{
     elType: string;
-    settings: { flex_direction_mobile?: string; content_width?: string; flex_wrap?: string };
+    isInner?: boolean;
+    settings: {
+      flex_direction_mobile?: string;
+      content_width?: string;
+      flex_wrap?: string;
+      background_background?: string;
+    };
     elements: Array<{
       elType: string;
       isInner?: boolean;
       settings: { width?: { size?: number }; width_tablet?: { size?: number }; width_mobile?: { size?: number } };
-      elements: Array<{ widgetType?: string }>;
+      elements: Array<{ widgetType?: string; isInner?: boolean; settings?: { _padding?: unknown } }>;
     }>;
   }>;
 };
@@ -338,6 +344,20 @@ assert.ok(coreDoc.sectionRoles.includes("hero 50/50"));
 assert.ok(coreDoc.sectionRoles.includes("cta 1-col"));
 assert.ok(coreJson.content[0].elements[0].elements.some((node) => node.widgetType === "heading"));
 assert.ok(coreJson.content[0].elements[1].elements.some((node) => node.widgetType === "image"));
+assert.equal(coreJson.content[0].isInner, false);
+assert.ok(coreJson.content[0].elements.every((column) => column.isInner === true));
+assert.ok(
+  coreJson.content[0].elements[0].elements.every(
+    (node) => node.widgetType == null || (node as { isInner?: boolean }).isInner === false,
+  ),
+);
+assert.ok(!JSON.stringify(coreJson.content).includes('"Banner"'));
+assert.ok(!JSON.stringify(coreJson.content).includes('"Card"'));
+const styledHeading = coreJson.content[0].elements[0].elements.find((node) => node.widgetType === "heading") as
+  | { settings?: { _padding?: unknown; title_color?: string } }
+  | undefined;
+assert.ok(styledHeading?.settings?._padding);
+assert.ok(coreJson.content[0].settings.background_background !== "");
 
 const landingAnalysis = {
   width: 1440,
@@ -468,6 +488,48 @@ const logoFix = repairElementorDocument(
 );
 assert.equal(JSON.parse(logoFix.json).content[0].widgetType, "icon-list");
 assert.equal(JSON.parse(logoFix.json).content[0].settings.view, "inline");
+
+const hoursStay = repairElementorDocument(
+  JSON.stringify({
+    content: [
+      {
+        id: "d",
+        elType: "widget",
+        widgetType: "text-editor",
+        settings: {
+          editor:
+            '<p><img src="data:image/svg+xml;charset=UTF-8,x" width="14" height="14" alt="" />Mon – Fri — 8:30 – 6:30</p>',
+        },
+        elements: [],
+      },
+    ],
+  }),
+);
+assert.equal(JSON.parse(hoursStay.json).content[0].widgetType, "text-editor");
+assert.equal(hoursStay.repairs.length, 0);
+
+const landingTree = JSON.parse(landingDoc.json) as {
+  content: Array<{
+    settings?: { _title?: string; background_color?: string };
+    elements: Array<{
+      elType: string;
+      isInner?: boolean;
+      settings?: { background_color?: string; _title?: string };
+      elements: Array<{ widgetType?: string; isInner?: boolean; settings?: { _padding?: unknown } }>;
+    }>;
+  }>;
+};
+assert.ok(!JSON.stringify(landingTree).includes('"Banner"'));
+assert.ok(!JSON.stringify(landingTree).includes('"Card"'));
+assert.ok(!JSON.stringify(landingTree).includes('"Widget grid"'));
+const nav = landingTree.content.find((section) => section.settings?._title === "Main nav");
+assert.ok(nav);
+assert.equal(nav?.settings?.background_color, "#002751");
+assert.ok(nav?.elements.every((column) => column.elType === "container" && column.isInner));
+assert.ok(nav?.elements.some((column) => column.elements.some((node) => node.widgetType === "heading")));
+const pain = landingTree.content.find((section) => section.settings?._title === "Pain points");
+assert.ok(pain);
+assert.ok(JSON.stringify(pain).includes("#FFF5F5"));
 console.log("widget repair ok");
 
 async function testGeneratedPlugin() {

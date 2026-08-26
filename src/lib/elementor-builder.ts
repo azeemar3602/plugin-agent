@@ -35,6 +35,19 @@ function pad(top: string, right: string, bottom: string, left: string) {
   return { unit: "px", top, right, bottom, left, isLinked: top === right && right === bottom && bottom === left };
 }
 
+function px(size: number, unit = "px") {
+  return { unit, size, sizes: [] as number[] };
+}
+
+function cleanSettings(settings: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(settings)) {
+    if (value === "" || value === undefined) continue;
+    out[key] = value;
+  }
+  return out;
+}
+
 function widgetNode(widget: CatalogWidget, settings: Record<string, unknown>): ElNode {
   const merged = normalizeRepeaterFields({ ...settings });
   if (widget.shortcode && widget.type === "shortcode") {
@@ -46,8 +59,13 @@ function widgetNode(widget: CatalogWidget, settings: Record<string, unknown>): E
   return {
     id: eid(),
     elType: "widget",
+    isInner: false,
     widgetType: widget.type,
-    settings: merged,
+    settings: cleanSettings({
+      _margin: pad("0", "0", "0", "0"),
+      _padding: pad("0", "0", "8", "0"),
+      ...merged,
+    }),
     elements: [],
   };
 }
@@ -69,18 +87,55 @@ function normalizeRepeaterFields(settings: Record<string, unknown>): Record<stri
   return out;
 }
 
+function columnSkin(column: PlannedColumn): Record<string, unknown> {
+  if (!column.card) return {};
+  const radius = String(column.cardRadius ?? 16);
+  const padSize = column.cardPad ?? 22;
+  const firstIsImage = column.widgets[0]?.widget.type === "image";
+  const border = column.cardBorder === "none" ? "" : "solid";
+  const borderColor =
+    column.cardBorder && column.cardBorder !== "none"
+      ? column.cardBorder
+      : column.cardBg && column.cardBg !== "#ffffff"
+        ? column.cardBg
+        : "#e6edf4";
+  return cleanSettings({
+    background_background: "classic",
+    background_color: column.cardBg ?? "#ffffff",
+    border_border: border || undefined,
+    border_width: border ? { unit: "px", top: "1", right: "1", bottom: "1", left: "1", isLinked: true } : undefined,
+    border_color: border ? borderColor : undefined,
+    border_radius: {
+      unit: "px",
+      top: radius,
+      right: radius,
+      bottom: radius,
+      left: radius,
+      isLinked: true,
+    },
+    padding: firstIsImage ? pad("0", "0", "12", "0") : pad(String(padSize), "24", String(padSize), "24"),
+    ...(column.cardShadow
+      ? {
+          box_shadow_box_shadow_type: "yes",
+          box_shadow_box_shadow: {
+            horizontal: 0,
+            vertical: 18,
+            blur: 36,
+            spread: 0,
+            color: "rgba(4, 152, 218, 0.35)",
+          },
+        }
+      : {}),
+  });
+}
+
 function innerContainer(column: PlannedColumn, index: number): ElNode {
   const direction = column.direction ?? "column";
-  const widgetNodes = withWidgetGrid(
-    column,
-    column.widgets.map((item) => widgetNode(item.widget, item.settings)),
-  );
-  const children = column.card ? [cardShell(column, widgetNodes)] : widgetNodes;
   return {
     id: eid(),
     elType: "container",
     isInner: true,
-    settings: {
+    settings: cleanSettings({
       _title: `Column ${index + 1}`,
       container_type: "flex",
       content_width: "full",
@@ -92,16 +147,18 @@ function innerContainer(column: PlannedColumn, index: number): ElNode {
       flex_gap_mobile: gap(10),
       flex_direction_mobile: column.direction === "row" ? "row" : "column",
       flex_size: "custom",
-      flex_grow: 0,
+      flex_grow: column.card ? 1 : 0,
       flex_shrink: 1,
-      min_width: { unit: "px", size: 0 },
-      width: { unit: "%", size: column.width },
-      width_tablet: { unit: "%", size: column.widthTablet },
-      width_mobile: { unit: "%", size: column.widthMobile },
-      padding: pad("0", "0", "0", "0"),
-      padding_mobile: pad("0", "0", "0", "0"),
-    },
-    elements: children,
+      min_width: px(0),
+      width: px(column.width, "%"),
+      width_tablet: px(column.widthTablet, "%"),
+      width_mobile: px(column.widthMobile, "%"),
+      ...columnSkin(column),
+    }),
+    elements: withWidgetGrid(
+      column,
+      column.widgets.map((item) => widgetNode(item.widget, item.settings)),
+    ),
   };
 }
 
@@ -111,116 +168,46 @@ function withWidgetGrid(column: PlannedColumn, nodes: ElNode[]): ElNode[] {
   const from = Math.max(0, grid.from);
   const slice = nodes.slice(from, from + grid.count);
   if (slice.length === 0) return nodes;
-  const percent = Math.floor(100 / grid.columns);
-  const wrap: ElNode = {
-    id: eid(),
-    elType: "container",
-    isInner: true,
-    settings: {
-      _title: "Widget grid",
-      container_type: "flex",
-      content_width: "full",
-      width: { unit: "%", size: 100 },
-      flex_direction: "row",
-      flex_wrap: "wrap",
-      flex_align_items: "flex-start",
-      flex_gap: gap(8),
-      flex_direction_mobile: "column",
-      flex_wrap_mobile: "wrap",
-    },
-    elements: slice.map((node) => ({
+  const cols = grid.columns;
+  const percent = Math.floor(100 / cols);
+  const colNodes: ElNode[] = [];
+  for (let col = 0; col < cols; col += 1) {
+    const kids = slice.filter((_, index) => index % cols === col);
+    colNodes.push({
       id: eid(),
       elType: "container",
       isInner: true,
-      settings: {
-        _title: "Grid cell",
+      settings: cleanSettings({
+        _title: `Column ${col + 1}`,
         container_type: "flex",
         content_width: "full",
-        width: { unit: "%", size: percent },
-        width_mobile: { unit: "%", size: 100 },
         flex_direction: "column",
-        padding: pad("0", "8", "8", "0"),
-      },
-      elements: [node],
-    })),
-  };
-  return [...nodes.slice(0, from), wrap, ...nodes.slice(from + slice.length)];
-}
-
-function cardShell(column: PlannedColumn, children: ElNode[]): ElNode {
-  const firstIsImage = column.widgets[0]?.widget.type === "image";
-  const body = firstIsImage && children.length > 1 ? [children[0], paddedStack(children.slice(1))] : children;
-  const radius = String(column.cardRadius ?? 16);
-  const padSize = column.cardPad ?? 22;
-  const border = column.cardBorder === "none" ? "" : "solid";
-  const borderColor =
-    column.cardBorder && column.cardBorder !== "none"
-      ? column.cardBorder
-      : column.cardBg && column.cardBg !== "#ffffff"
-        ? column.cardBg
-        : "#e6edf4";
-  return {
+        flex_gap: gap(12),
+        width: px(percent, "%"),
+        width_mobile: px(100, "%"),
+      }),
+      elements: kids,
+    });
+  }
+  const row: ElNode = {
     id: eid(),
     elType: "container",
     isInner: true,
-    settings: {
-      _title: "Card",
+    settings: cleanSettings({
+      _title: `${cols} columns`,
       container_type: "flex",
       content_width: "full",
-      width: { unit: "%", size: 100 },
-      height: { unit: "%", size: 100 },
-      flex_grow: 1,
-      flex_direction: "column",
-      flex_align_items: "stretch",
-      flex_gap: gap(0),
-      background_background: "classic",
-      background_color: column.cardBg ?? "#ffffff",
-      border_border: border,
-      border_width: border ? { unit: "px", top: "1", right: "1", bottom: "1", left: "1", isLinked: true } : undefined,
-      border_color: border ? borderColor : undefined,
-      border_radius: {
-        unit: "px",
-        top: radius,
-        right: radius,
-        bottom: radius,
-        left: radius,
-        isLinked: true,
-      },
-      overflow: "visible",
-      padding: firstIsImage ? pad("0", "0", "12", "0") : pad(String(padSize), "24", String(padSize), "24"),
-      ...(column.cardShadow
-        ? {
-            box_shadow_box_shadow_type: "yes",
-            box_shadow_box_shadow: {
-              horizontal: 0,
-              vertical: 18,
-              blur: 36,
-              spread: 0,
-              color: "rgba(4, 152, 218, 0.35)",
-            },
-          }
-        : {}),
-    },
-    elements: body,
+      width: px(100, "%"),
+      flex_direction: "row",
+      flex_wrap: "nowrap",
+      flex_align_items: "flex-start",
+      flex_gap: gap(12),
+      flex_direction_mobile: "column",
+      flex_wrap_mobile: "wrap",
+    }),
+    elements: colNodes,
   };
-}
-
-function paddedStack(children: ElNode[]): ElNode {
-  return {
-    id: eid(),
-    elType: "container",
-    isInner: true,
-    settings: {
-      _title: "Card body",
-      container_type: "flex",
-      content_width: "full",
-      width: { unit: "%", size: 100 },
-      flex_direction: "column",
-      flex_gap: gap(6),
-      padding: pad("12", "16", "8", "16"),
-    },
-    elements: children,
-  };
+  return [...nodes.slice(0, from), row, ...nodes.slice(from + slice.length)];
 }
 
 function rowContainer(row: PlannedRow): ElNode {
@@ -231,11 +218,11 @@ function rowContainer(row: PlannedRow): ElNode {
     id: eid(),
     elType: "container",
     isInner: true,
-    settings: {
+    settings: cleanSettings({
       _title: multi ? `${row.columns.length} columns` : "Row",
       container_type: "flex",
       content_width: "full",
-      width: { unit: "%", size: 100 },
+      width: px(100, "%"),
       flex_direction: "row",
       flex_wrap: "nowrap",
       flex_align_items: row.align ?? "flex-start",
@@ -247,47 +234,8 @@ function rowContainer(row: PlannedRow): ElNode {
       flex_direction_mobile: "column",
       flex_wrap_mobile: "wrap",
       flex_gap_mobile: gap(16),
-      padding: pad("0", "0", "0", "0"),
-    },
+    }),
     elements: row.columns.map((column, index) => innerContainer(column, index)),
-  };
-}
-
-function bannerWrap(section: PlannedSection, children: ElNode[]): ElNode {
-  const banner = section.banner!;
-  const compact = Boolean(banner.compact);
-  return {
-    id: eid(),
-    elType: "container",
-    isInner: true,
-    settings: {
-      _title: "Banner",
-      container_type: "flex",
-      content_width: "full",
-      width: { unit: "%", size: 100 },
-      flex_direction: "row",
-      flex_wrap: "nowrap",
-      flex_align_items: "center",
-      flex_justify_content: "space-between",
-      flex_gap: gap(compact ? 12 : 24),
-      flex_direction_tablet: compact ? "row" : "column",
-      flex_wrap_tablet: compact ? "nowrap" : "wrap",
-      flex_direction_mobile: "column",
-      flex_gap_mobile: gap(16),
-      background_background: "classic",
-      background_color: banner.color,
-      border_radius: {
-        unit: "px",
-        top: String(banner.radius),
-        right: String(banner.radius),
-        bottom: String(banner.radius),
-        left: String(banner.radius),
-        isLinked: true,
-      },
-      padding: compact ? pad("10", "22", "10", "22") : pad("32", "36", "32", "36"),
-      padding_mobile: compact ? pad("10", "16", "10", "16") : pad("22", "20", "22", "20"),
-    },
-    elements: children,
   };
 }
 
@@ -335,50 +283,64 @@ function sectionPadding(section: PlannedSection) {
 
 function outerContainer(section: PlannedSection): ElNode {
   const rows = section.rows;
-  const nested = rows.length > 1 || Boolean(section.banner);
-  const rowNodes = rows.map((item) => (nested ? rowContainer(item) : item.columns.map((column, index) => innerContainer(column, index)))).flat();
-  const children = section.banner ? [bannerWrap(section, rowNodes)] : rowNodes;
+  const multi = rows.length > 1;
+  const children = multi
+    ? rows.map((item) => rowContainer(item))
+    : (rows[0]?.columns ?? []).map((column, index) => innerContainer(column, index));
   const padding = sectionPadding(section);
-  const background = section.gradient
+  const banner = section.banner;
+  const compact = Boolean(banner?.compact);
+  const background = banner
     ? {
-        background_background: "gradient",
-        background_color: section.gradient.from,
-        background_color_b: section.gradient.to,
-        gradient_type: "linear",
-        gradient_angle: { unit: "deg", size: 90 },
+        background_background: "classic",
+        background_color: banner.color,
+        border_radius: {
+          unit: "px",
+          top: String(banner.radius),
+          right: String(banner.radius),
+          bottom: String(banner.radius),
+          left: String(banner.radius),
+          isLinked: true,
+        },
       }
-    : section.bg && section.bg !== "transparent"
+    : section.gradient
       ? {
-          background_background: "classic",
-          background_color: section.bg,
+          background_background: "gradient",
+          background_color: section.gradient.from,
+          background_color_b: section.gradient.to,
+          gradient_type: "linear",
+          gradient_angle: { unit: "deg", size: 90 },
         }
-      : {
-          background_background: "",
-        };
+      : section.bg && section.bg !== "transparent"
+        ? {
+            background_background: "classic",
+            background_color: section.bg,
+          }
+        : {};
   return {
     id: eid(),
     elType: "container",
     isInner: false,
-    settings: {
+    settings: cleanSettings({
       _title: section.label,
       container_type: "flex",
-      content_width: section.fullBleed ? "full" : "boxed",
-      boxed_width: { unit: "px", size: section.boxedWidth ?? 1180 },
-      flex_direction: nested ? "column" : "row",
-      flex_wrap: nested || section.columnCount <= 1 ? "wrap" : "nowrap",
-      flex_align_items: "stretch",
-      flex_justify_content: nested ? "flex-start" : "center",
-      flex_gap: gap(nested ? 20 : section.columnCount > 1 ? 20 : 0),
-      flex_direction_tablet: nested ? "column" : "row",
-      flex_wrap_tablet: nested || section.columnCount <= 1 ? "wrap" : "nowrap",
-      flex_direction_mobile: nested || section.columnCount > 1 ? "column" : "row",
+      content_width: section.fullBleed && !banner ? "full" : "boxed",
+      boxed_width: px(section.boxedWidth ?? 1180),
+      flex_direction: multi ? "column" : "row",
+      flex_wrap: "nowrap",
+      flex_align_items: banner ? "center" : "stretch",
+      flex_justify_content: multi ? "flex-start" : banner ? "space-between" : "center",
+      flex_gap: gap(multi ? 20 : banner ? (compact ? 12 : 24) : section.columnCount > 1 ? 20 : 0),
+      flex_direction_tablet: multi ? "column" : compact || !banner ? "row" : "column",
+      flex_wrap_tablet: "nowrap",
+      flex_direction_mobile: multi || section.columnCount > 1 ? "column" : "row",
       flex_wrap_mobile: "wrap",
       flex_gap_mobile: gap(16),
       ...background,
-      padding: padding.desktop,
-      padding_tablet: padding.tablet,
-      padding_mobile: padding.mobile,
-    },
+      padding: banner ? (compact ? pad("10", "22", "10", "22") : pad("32", "36", "32", "36")) : padding.desktop,
+      padding_tablet: banner ? (compact ? pad("10", "18", "10", "18") : pad("24", "24", "24", "24")) : padding.tablet,
+      padding_mobile: banner ? (compact ? pad("10", "16", "10", "16") : pad("22", "20", "22", "20")) : padding.mobile,
+    }),
     elements: children,
   };
 }

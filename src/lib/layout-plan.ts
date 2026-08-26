@@ -1058,9 +1058,10 @@ function heading(
     align: opts.align ?? "left",
     title_color: opts.color ?? INK,
     typography_typography: "custom",
-    typography_font_size: { unit: "px", size: px },
+    typography_font_size: { unit: "px", size: px, sizes: [] },
     typography_font_weight: as === "h4" ? "700" : "800",
-    typography_line_height: { unit: "em", size: as === "h1" ? 1.12 : 1.25 },
+    typography_line_height: { unit: "em", size: as === "h1" ? 1.12 : 1.25, sizes: [] },
+    _padding: { unit: "px", top: "0", right: "0", bottom: "8", left: "0", isLinked: false },
     ...(opts.extra ?? {}),
   });
 }
