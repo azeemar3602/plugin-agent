@@ -166,7 +166,8 @@ Without Python + those packages, PDF convert fails. There is **no Node-only pdf.
 6. Landing title is always `landingPageTitle()` — never blog-hero defaults
 
 Landing filenames: `home-page|homepage|landing|never-miss|client-call|index|industry-page|veterinar`  
-Article filenames: `no-show|article|blog-post|vets-reduce|clinic-effectively`
+Article filenames: `no-show|article|blog|blog-post|vets-reduce|clinic-effectively`
+(`blog` matches as a whole word. The real file is `Axion_Blog Template_V4.jpg`.)
 
 ---
 
@@ -232,6 +233,8 @@ If the user says “I dropped a PDF and nothing is there”: they likely used th
 | `src/lib/wordpress.ts` | REST: probe, plugins, import, page, media, widgets |
 | `src/lib/store.ts` | `data/store.json`, trim to last 80 messages |
 | `bridge/plugin-agent-bridge/` | WP helper plugin |
+| `scripts/convert-offline.ts` | Run a design through the full pipeline with no WordPress |
+| `scripts/wp-check.ts` | Read-only probe: plugins + widget catalogue (creds from env) |
 | `scripts/test-widget-convert.ts` | Routing + landing copy + repair tests |
 | `scripts/test-agent.ts` | Chat: URL, help mentions PDF, no extra site prompt |
 

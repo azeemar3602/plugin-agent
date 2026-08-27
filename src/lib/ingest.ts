@@ -261,9 +261,15 @@ async function processDesigns(designs: IncomingFile[]) {
         const existingId = await findPageIdBySlug(site, requestedSlug);
         const target = resolvePublishTarget(existingId, requestedSlug);
         skippedProtected = target.skippedProtected;
+        // The redirected slug is not itself protected, so look it up and reuse
+        // it. Without this every blog convert POSTs a new page and WordPress
+        // suffixes the slug — …-convert, …-convert-2, …-convert-3.
+        const targetId = target.skippedProtected
+          ? await findPageIdBySlug(site, target.slug)
+          : target.id;
         const page = await createElementorPage({
           site,
-          id: target.id,
+          id: targetId,
           title: parsed.title || built.title,
           slug: target.slug,
           elementor: {
