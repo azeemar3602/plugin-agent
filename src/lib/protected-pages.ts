@@ -1,3 +1,9 @@
+/**
+ * WordPress stores post_name in a VARCHAR(200), so that is the real ceiling.
+ * Anything shorter just truncates titles mid-word for no reason.
+ */
+export const MAX_SLUG_LENGTH = 200;
+
 /** Live blog article on wp.azbuilds.xyz — never overwrite this page. */
 export const PROTECTED_PAGE_IDS = new Set([23]);
 
@@ -20,7 +26,7 @@ export function resolvePublishTarget(
     return { id: existingId, slug, skippedProtected: false };
   }
   const suffix = "-convert";
-  const max = 60;
+  const max = MAX_SLUG_LENGTH;
   // Truncating can land on a separator, and WordPress collapses "foo--convert"
   // to "foo-convert" — so trim the stem or the slug we look up never matches.
   const stem =

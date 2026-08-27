@@ -23,7 +23,7 @@ import {
 } from "./wordpress";
 import { cropLandingImages } from "./design-crops";
 import { LANDING_STOCK } from "./layout-plan";
-import { resolvePublishTarget } from "./protected-pages";
+import { MAX_SLUG_LENGTH, resolvePublishTarget } from "./protected-pages";
 import { collectRemoteImageUrls, replaceRemoteImageUrls, type HostedMedia } from "./wp-media";
 import { summarizeRepairs } from "./widget-repair";
 import { isPdfFilename, rasterizePdfToJpeg } from "./pdf-raster";
@@ -248,7 +248,7 @@ async function processDesigns(designs: IncomingFile[]) {
           (parsed.title || built.title || "design-page")
             .toLowerCase()
             .replace(/[^a-z0-9]+/g, "-")
-            .slice(0, 60)
+            .slice(0, MAX_SLUG_LENGTH)
             .replace(/^-+|-+$/g, "") || "design-page";
         const existingId = await findPageIdBySlug(site, requestedSlug);
         const target = resolvePublishTarget(existingId, requestedSlug);

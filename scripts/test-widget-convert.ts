@@ -16,7 +16,7 @@ import {
   pageTitle,
   planPageLayout,
 } from "../src/lib/layout-plan";
-import { resolvePublishTarget } from "../src/lib/protected-pages";
+import { MAX_SLUG_LENGTH, resolvePublishTarget } from "../src/lib/protected-pages";
 import {
   availableWidgets,
   mergeRemoteWidgets,
@@ -455,7 +455,8 @@ assert.deepEqual(
   resolvePublishTarget(23, "how-can-vets-reduce-no-shows-at-their-clinic-effectively"),
   {
     id: undefined,
-    slug: "how-can-vets-reduce-no-shows-at-their-clinic-effecti-convert",
+    // Not truncated: WordPress allows 200 chars, so the whole title survives.
+    slug: "how-can-vets-reduce-no-shows-at-their-clinic-effectively-convert",
     skippedProtected: true,
   },
 );
@@ -468,15 +469,28 @@ assert.deepEqual(resolvePublishTarget(88, "never-miss-another-client-call"), {
 // Truncation must not leave a dash against the suffix: WordPress collapses
 // "foo--convert" to "foo-convert", and the lookup would miss forever after.
 {
-  const stem = "how-can-vets-reduce-no-shows-at-their-clinic-effect-guide";
-  assert.equal(stem.slice(0, 52).endsWith("-"), true, "fixture should truncate onto a dash");
+  // Long enough that the suffix forces truncation, and index 191 is a dash so
+  // the cut lands on a separator.
+  const stem = "a-".repeat(120);
+  const cut = MAX_SLUG_LENGTH - "-convert".length;
+  assert.equal(stem.slice(0, cut).endsWith("-"), true, "fixture should truncate onto a dash");
 
   const target = resolvePublishTarget(23, stem);
   assert.equal(target.skippedProtected, true);
   assert.ok(!target.slug.includes("--"), "no doubled dash before -convert");
   assert.ok(!/-$/.test(target.slug), "no trailing dash");
-  assert.ok(target.slug.length <= 60, "slug stays within 60 chars");
-  assert.equal(target.slug, "how-can-vets-reduce-no-shows-at-their-clinic-effect-convert");
+  assert.ok(target.slug.length <= MAX_SLUG_LENGTH, "slug stays within the WordPress limit");
+  assert.ok(target.slug.endsWith("-convert"));
+}
+
+// A title that fits inside the limit keeps every word — no mid-word cut.
+{
+  const target = resolvePublishTarget(
+    23,
+    "how-can-vets-reduce-no-shows-at-their-clinic-effectively",
+  );
+  assert.ok(target.slug.startsWith("how-can-vets-reduce-no-shows-at-their-clinic-effectively"));
+  assert.ok(!target.slug.includes("effecti-"), "must not truncate mid-word");
 }
 
 // The publish slug is trimmed after truncation, not before.
@@ -485,11 +499,19 @@ assert.deepEqual(resolvePublishTarget(88, "never-miss-another-client-call"), {
     title
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
-      .slice(0, 60)
+      .slice(0, MAX_SLUG_LENGTH)
       .replace(/^-+|-+$/g, "") || "design-page";
-  const slug = slugify("Veterinary Practice Growth And Client Retention Strategy Ab Guide");
-  assert.ok(!/-$/.test(slug), "long titles must not slug to a trailing dash");
-  assert.equal(slug, "veterinary-practice-growth-and-client-retention-strategy-ab");
+
+  // Ordinary titles are untouched — the old 60-char cap used to cut them.
+  assert.equal(
+    slugify("Veterinary Practice Growth And Client Retention Strategy Ab Guide"),
+    "veterinary-practice-growth-and-client-retention-strategy-ab-guide",
+  );
+
+  // Past the limit it still must not end on a separator.
+  const long = slugify("Ab ".repeat(120));
+  assert.ok(!/-$/.test(long), "long titles must not slug to a trailing dash");
+  assert.ok(long.length <= MAX_SLUG_LENGTH);
 }
 assert.equal(
   classifyPageKind(homepageLikeAnalysis, widgets, "Axion_Industry Page (Veterinarian) V4_NEW CONTENT COPY.pdf"),
