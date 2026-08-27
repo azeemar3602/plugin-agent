@@ -10,11 +10,13 @@ import {
   columnWidths,
   classifyPageKind,
   landingPageTitle,
+  looksLikeArticleFilename,
   looksLikeLanding,
   looksLikeLandingFilename,
   pageTitle,
   planPageLayout,
 } from "../src/lib/layout-plan";
+import { resolvePublishTarget } from "../src/lib/protected-pages";
 import {
   availableWidgets,
   mergeRemoteWidgets,
@@ -428,6 +430,16 @@ const articleLikeAnalysis = {
   ],
 };
 assert.equal(classifyPageKind(articleLikeAnalysis, widgets, "vets-reduce-no-shows.jpg"), "article");
+assert.equal(
+  looksLikeArticleFilename("Axion_Blog Template_V4.jpg"),
+  true,
+);
+assert.equal(looksLikeLandingFilename("Axion_Blog Template_V4.jpg"), false);
+assert.equal(classifyPageKind(articleLikeAnalysis, widgets, "Axion_Blog Template_V4.jpg"), "article");
+assert.match(
+  pageTitle(articleLikeAnalysis, widgets, "Axion_Blog Template_V4.jpg"),
+  /No-Shows/,
+);
 assert.equal(classifyPageKind(articleLikeAnalysis, widgets), "article");
 assert.match(pageTitle(articleLikeAnalysis, widgets, "vets-reduce-no-shows.jpg"), /No-Shows/);
 const articlePlan = planPageLayout({
@@ -438,6 +450,24 @@ const articlePlan = planPageLayout({
 });
 assert.ok(articlePlan.some((section) => section.analysisRole === "relatedPosts"));
 assert.ok(!articlePlan.some((section) => section.label === "Landing hero"));
+
+assert.deepEqual(
+  resolvePublishTarget(23, "how-can-vets-reduce-no-shows-at-their-clinic-effectively"),
+  {
+    id: undefined,
+    slug: "how-can-vets-reduce-no-shows-at-their-clinic-effecti-convert",
+    skippedProtected: true,
+  },
+);
+assert.deepEqual(resolvePublishTarget(88, "never-miss-another-client-call"), {
+  id: 88,
+  slug: "never-miss-another-client-call",
+  skippedProtected: false,
+});
+assert.equal(
+  classifyPageKind(homepageLikeAnalysis, widgets, "Axion_Industry Page (Veterinarian) V4_NEW CONTENT COPY.pdf"),
+  "landing",
+);
 
 const homepageDoc = buildElementorDocument({
   title: pageTitle(homepageLikeAnalysis, widgets, "Axion_Website-Home-Page-DesignV3.jpg"),

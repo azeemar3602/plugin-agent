@@ -243,7 +243,7 @@ API routes: `/api/upload`, `/api/chat`, `/api/state`, `/api/remote`, `/api/site`
 ## Open work (likely next)
 
 1. **Landing still not pixel-perfect** vs the industry PDF: glows, waves, overlapping badges, real compare table, circular demo photo + orbiting pills, first FAQ item navy accordion, tighter logo crops.
-2. **Article page** was not the pixel-perfect pass. If the user says “vet page,” they usually mean the **industry landing**, not the blog.
+2. **Article page** was not the pixel-perfect pass. If the user says “vet page,” they usually mean the **industry landing**, not the blog. Page **id 23** is protected: a blog convert publishes a new slug (`…-convert`) instead of overwriting it. Filenames with a whole-word `blog` (e.g. `Axion_Blog Template_V4.jpg`) route to the article plan, not the landing.
 3. **PDF on Windows without Python** — still a gap. Desktop EXE users need `pip3 install -r requirements.txt` or a Node rasterizer.
 4. Classification is filename-heavy. A nameless `upload.pdf` of the homepage can still route via scores; keep tests if you change scoring.
 5. Chat history is truncated to 80 messages; welcome text may have scrolled off. Last-page pin is the safety net.

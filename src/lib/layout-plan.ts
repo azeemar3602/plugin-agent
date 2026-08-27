@@ -182,7 +182,7 @@ export function looksLikeLandingFilename(filename?: string): boolean {
 
 export function looksLikeArticleFilename(filename?: string): boolean {
   const name = normalizedFilename(filename);
-  return /no-shows?|article|blog-post|vets-reduce|clinic-effectively/.test(name);
+  return /no-shows?|article|(?:^|-)blog(?:-|$)|blog-post|vets-reduce|clinic-effectively/.test(name);
 }
 
 function sectionShare(sections: DesignSection[], match: (section: DesignSection) => boolean): number {

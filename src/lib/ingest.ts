@@ -26,6 +26,7 @@ import {
 } from "./wordpress";
 import { cropLandingImages } from "./design-crops";
 import { LANDING_STOCK } from "./layout-plan";
+import { resolvePublishTarget } from "./protected-pages";
 import { collectRemoteImageUrls, replaceRemoteImageUrls, type HostedMedia } from "./wp-media";
 import { summarizeRepairs } from "./widget-repair";
 import { isPdfFilename, rasterizePdfToJpeg } from "./pdf-raster";
@@ -230,6 +231,7 @@ async function processDesigns(designs: IncomingFile[]) {
     let imported = false;
     let importError: string | undefined;
     let pageUrl: string | undefined;
+    let skippedProtected = false;
     let json = built.json;
     let uploadedCount = 0;
     if (site?.url && site.username && site.password) {
@@ -250,17 +252,20 @@ async function processDesigns(designs: IncomingFile[]) {
           content?: unknown[];
           page_settings?: Record<string, unknown>;
         };
-        const slug = (parsed.title || built.title || "design-page")
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-|-$/g, "")
-          .slice(0, 60) || "design-page";
-        const existingId = await findPageIdBySlug(site, slug);
+        const requestedSlug =
+          (parsed.title || built.title || "design-page")
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-|-$/g, "")
+            .slice(0, 60) || "design-page";
+        const existingId = await findPageIdBySlug(site, requestedSlug);
+        const target = resolvePublishTarget(existingId, requestedSlug);
+        skippedProtected = target.skippedProtected;
         const page = await createElementorPage({
           site,
-          id: existingId,
+          id: target.id,
           title: parsed.title || built.title,
-          slug,
+          slug: target.slug,
           elementor: {
             title: parsed.title,
             content: parsed.content ?? [],
@@ -300,7 +305,7 @@ async function processDesigns(designs: IncomingFile[]) {
         id: nid(),
         role: "agent",
         text: imported
-          ? `Detected ${built.detectedWidgets.length} Elementor widgets on this site, mapped sections then columns (${built.sectionRoles.join(" → ")}), and built **${built.title}** in containers: ${built.widgetsUsed.join(", ")}.${generatedNote}${repairNote}${uploadedCount ? ` Uploaded ${uploadedCount} images to the WordPress media library.` : ""}${pageUrl ? ` Live page: ${pageUrl}` : " Saved under Templates → Saved Templates."}`
+          ? `Detected ${built.detectedWidgets.length} Elementor widgets on this site, mapped sections then columns (${built.sectionRoles.join(" → ")}), and built **${built.title}** in containers: ${built.widgetsUsed.join(", ")}.${generatedNote}${repairNote}${uploadedCount ? ` Uploaded ${uploadedCount} images to the WordPress media library.` : ""}${skippedProtected ? " Did not overwrite protected page 23; published a new URL instead." : ""}${pageUrl ? ` Live page: ${pageUrl}` : " Saved under Templates → Saved Templates."}`
           : `Mapped sections then columns (${built.sectionRoles.join(" → ")}), then built **${built.title}** in Elementor containers. Widgets used: ${built.widgetsUsed.join(", ") || "none"}.${generatedNote}${repairNote}${importError ? ` Import skipped: ${importError}` : " Download the JSON and import it in Elementor."}`,
         createdAt: nowIso(),
         card: {
