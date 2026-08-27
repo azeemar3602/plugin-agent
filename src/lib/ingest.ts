@@ -303,7 +303,7 @@ async function processDesigns(designs: IncomingFile[]) {
         id: nid(),
         role: "agent",
         text: imported
-          ? `Detected ${built.detectedWidgets.length} Elementor widgets on this site, mapped sections then columns (${built.sectionRoles.join(" → ")}), and built **${built.title}** in containers: ${built.widgetsUsed.join(", ")}.${generatedNote}${repairNote}${uploadedCount ? ` Uploaded ${uploadedCount} images to the WordPress media library.` : ""}${skippedProtected ? " Did not overwrite protected page 23; published a new URL instead." : ""}${pageUrl ? ` Live page: ${pageUrl}` : " Saved under Templates → Saved Templates."}`
+          ? `Detected ${built.detectedWidgets.length} Elementor widgets on this site, mapped sections then columns (${built.sectionRoles.join(" → ")}), and built **${built.title}** in containers: ${built.widgetsUsed.join(", ")}.${generatedNote}${repairNote}${uploadedCount ? ` Uploaded ${uploadedCount} images to the WordPress media library.` : ""}${skippedProtected ? " Did not overwrite the protected live page; published a new URL instead." : ""}${pageUrl ? ` Live page: ${pageUrl}` : " Saved under Templates → Saved Templates."}`
           : `Mapped sections then columns (${built.sectionRoles.join(" → ")}), then built **${built.title}** in Elementor containers. Widgets used: ${built.widgetsUsed.join(", ") || "none"}.${generatedNote}${repairNote}${importError ? ` Import skipped: ${importError}` : " Download the JSON and import it in Elementor."}`,
         createdAt: nowIso(),
         card: {

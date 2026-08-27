@@ -460,10 +460,19 @@ assert.deepEqual(
     skippedProtected: true,
   },
 );
-assert.deepEqual(resolvePublishTarget(88, "never-miss-another-client-call"), {
+// An unprotected page is updated in place.
+assert.deepEqual(resolvePublishTarget(88, "some-other-landing-page"), {
   id: 88,
-  slug: "never-miss-another-client-call",
+  slug: "some-other-landing-page",
   skippedProtected: false,
+});
+
+// The vet landing is protected too, by id and by slug.
+assert.equal(resolvePublishTarget(62, "anything").skippedProtected, true);
+assert.deepEqual(resolvePublishTarget(undefined, "never-miss-another-client-call"), {
+  id: undefined,
+  slug: "never-miss-another-client-call-convert",
+  skippedProtected: true,
 });
 
 // Truncation must not leave a dash against the suffix: WordPress collapses

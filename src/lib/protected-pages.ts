@@ -4,11 +4,17 @@
  */
 export const MAX_SLUG_LENGTH = 200;
 
-/** Live blog article on wp.azbuilds.xyz — never overwrite this page. */
-export const PROTECTED_PAGE_IDS = new Set([23]);
+/**
+ * Live pages on wp.azbuilds.xyz — never overwrite these. A design whose title
+ * slugs onto one of them is published beside it instead.
+ *   23 — the blog article
+ *   62 — the veterinarian landing page
+ */
+export const PROTECTED_PAGE_IDS = new Set([23, 62]);
 
 export const PROTECTED_PAGE_SLUGS = new Set([
   "how-can-vets-reduce-no-shows-at-their-clinic-effectively",
+  "never-miss-another-client-call",
 ]);
 
 export function isProtectedElementorPage(id?: number, slug?: string): boolean {
@@ -17,7 +23,7 @@ export function isProtectedElementorPage(id?: number, slug?: string): boolean {
   return false;
 }
 
-/** If the slug/id is protected, publish a new page instead of updating page 23. */
+/** If the slug/id is protected, publish a new page instead of updating it. */
 export function resolvePublishTarget(
   existingId: number | undefined,
   slug: string,
