@@ -21,9 +21,12 @@ export function resolvePublishTarget(
   }
   const suffix = "-convert";
   const max = 60;
-  const next =
+  // Truncating can land on a separator, and WordPress collapses "foo--convert"
+  // to "foo-convert" — so trim the stem or the slug we look up never matches.
+  const stem =
     slug.length + suffix.length <= max
-      ? `${slug}${suffix}`
-      : `${slug.slice(0, Math.max(1, max - suffix.length))}${suffix}`;
-  return { id: undefined, slug: next || "design-convert", skippedProtected: true };
+      ? slug
+      : slug.slice(0, Math.max(1, max - suffix.length)).replace(/-+$/, "");
+  const next = stem ? `${stem}${suffix}` : "design-convert";
+  return { id: undefined, slug: next, skippedProtected: true };
 }

@@ -182,7 +182,13 @@ async function processDesigns(designs: IncomingFile[]) {
   let remoteWidgets = site ? await listElementorWidgets(site) : [];
 
   for (const design of designs) {
-    const prepDir = path.join(dataDir(), "designs", `prep-${Date.now()}`);
+    // Same-millisecond drops collide on a bare timestamp and overwrite each
+    // other's source file, so salt it the way buildDesignTemplate does.
+    const prepDir = path.join(
+      dataDir(),
+      "designs",
+      `prep-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+    );
     await mkdir(prepDir, { recursive: true });
     const sourceName = basenameOf(design).replace(/[^\w.-]+/g, "-") || "design";
     const sourcePath = path.join(prepDir, sourceName);
@@ -252,12 +258,15 @@ async function processDesigns(designs: IncomingFile[]) {
           content?: unknown[];
           page_settings?: Record<string, unknown>;
         };
+        // Trim dashes *after* the slice: truncating can land on a separator, and
+        // WordPress strips the trailing dash when it saves. The slug we look up
+        // next time would then never match and every drop would add a copy.
         const requestedSlug =
           (parsed.title || built.title || "design-page")
             .toLowerCase()
             .replace(/[^a-z0-9]+/g, "-")
-            .replace(/^-|-$/g, "")
-            .slice(0, 60) || "design-page";
+            .slice(0, 60)
+            .replace(/^-+|-+$/g, "") || "design-page";
         const existingId = await findPageIdBySlug(site, requestedSlug);
         const target = resolvePublishTarget(existingId, requestedSlug);
         skippedProtected = target.skippedProtected;

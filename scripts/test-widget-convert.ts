@@ -464,6 +464,33 @@ assert.deepEqual(resolvePublishTarget(88, "never-miss-another-client-call"), {
   slug: "never-miss-another-client-call",
   skippedProtected: false,
 });
+
+// Truncation must not leave a dash against the suffix: WordPress collapses
+// "foo--convert" to "foo-convert", and the lookup would miss forever after.
+{
+  const stem = "how-can-vets-reduce-no-shows-at-their-clinic-effect-guide";
+  assert.equal(stem.slice(0, 52).endsWith("-"), true, "fixture should truncate onto a dash");
+
+  const target = resolvePublishTarget(23, stem);
+  assert.equal(target.skippedProtected, true);
+  assert.ok(!target.slug.includes("--"), "no doubled dash before -convert");
+  assert.ok(!/-$/.test(target.slug), "no trailing dash");
+  assert.ok(target.slug.length <= 60, "slug stays within 60 chars");
+  assert.equal(target.slug, "how-can-vets-reduce-no-shows-at-their-clinic-effect-convert");
+}
+
+// The publish slug is trimmed after truncation, not before.
+{
+  const slugify = (title: string) =>
+    title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .slice(0, 60)
+      .replace(/^-+|-+$/g, "") || "design-page";
+  const slug = slugify("Veterinary Practice Growth And Client Retention Strategy Ab Guide");
+  assert.ok(!/-$/.test(slug), "long titles must not slug to a trailing dash");
+  assert.equal(slug, "veterinary-practice-growth-and-client-retention-strategy-ab");
+}
 assert.equal(
   classifyPageKind(homepageLikeAnalysis, widgets, "Axion_Industry Page (Veterinarian) V4_NEW CONTENT COPY.pdf"),
   "landing",

@@ -1,7 +1,5 @@
-import { execFile as execFileCb } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { promisify } from "node:util";
 
 import { analyzeDesignBuffer } from "./analyze-image";
 import { buildElementorDocument, type DesignAnalysis } from "./elementor-builder";
@@ -14,9 +12,8 @@ import {
 } from "./elementor-widgets";
 import { appRoot, dataDir } from "./paths";
 import { isPdfFilename, rasterizePdfToJpeg } from "./pdf-raster";
+import { runPythonScript } from "./python";
 import type { RemoteElementorWidget, RemotePlugin } from "./wordpress";
-
-const execFile = promisify(execFileCb);
 
 export type DesignBuild = {
   id: string;
@@ -50,14 +47,18 @@ export async function analyzeDesignFile(filePath: string, buffer: Buffer): Promi
   }
   const script = path.join(appRoot(), "scripts", "analyze_design.py");
   try {
-    const { stdout, stderr } = await execFile("python3", [script, filePath], {
+    const { stdout, stderr } = await runPythonScript([script, filePath], {
       timeout: 30000,
       maxBuffer: 8 * 1024 * 1024,
     });
     if (!stdout.trim()) {
       throw new Error(stderr.trim() || "Could not read that design file.");
     }
-    return JSON.parse(stdout) as DesignAnalysis;
+    try {
+      return JSON.parse(stdout) as DesignAnalysis;
+    } catch {
+      throw new Error("The design analyzer returned output that was not JSON.");
+    }
   } catch (error) {
     throw new Error(
       error instanceof Error
