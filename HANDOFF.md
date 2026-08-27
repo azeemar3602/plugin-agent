@@ -46,6 +46,7 @@ Passwords on Windows live under `%APPDATA%\plugin-agent\data`.
 ## Tests (run before considering convert work done)
 
 ```bash
+npx next typegen     # fresh clone only: tsc needs the generated LayoutProps/PageProps
 npx tsc --noEmit
 npx tsx scripts/test-widget-convert.ts
 npx tsx scripts/test-agent.ts
@@ -70,6 +71,8 @@ Homepage filename `Axion_Industry Page (Veterinarian) V4_NEW CONTENT COPY.pdf` m
 - Do **not** switch `lastSiteId` to bralim.org (no Elementor). Keep **wp.azbuilds.xyz**.
 - Do **not** overwrite article page **id 23**.
 - Do **not** commit `data/store.json` (application passwords).
+- Do **not** deploy to a public host with `PLUGIN_AGENT_PASSWORD` unset — the app holds a
+  WordPress application password that can publish and overwrite pages.
 - Do **not** create pull requests unless the user explicitly asks.
 - `widget-repair.ts`: rewrite Text Editor → Heading / Icon List when that is what the block is. **Do not** rewrite the hours row (`<img>` + “Mon – Fri…”) into Icon Box.
 
@@ -221,13 +224,57 @@ If the user says “I dropped a PDF and nothing is there”: they likely used th
 | `src/lib/pdf-raster.ts` + `scripts/pdf_to_jpeg.py` | PDF → JPEG |
 | `src/lib/design-crops.ts` | Landing JPEG crops (hero / dash / logos) |
 | `src/lib/generate-widgets.ts` | Plugin Agent Widgets (skip on landing) |
+| `src/proxy.ts` | Password gate (Next 16 proxy, formerly middleware) |
+| `src/lib/gate.ts` | Gate token, cookie name, safe redirect target |
+| `src/app/login/page.tsx` + `src/app/api/login/route.ts` | Sign-in form and handler |
 | `src/lib/wordpress.ts` | REST: probe, plugins, import, page, media, widgets |
 | `src/lib/store.ts` | `data/store.json`, trim to last 80 messages |
 | `bridge/plugin-agent-bridge/` | WP helper plugin |
 | `scripts/test-widget-convert.ts` | Routing + landing copy + repair tests |
 | `scripts/test-agent.ts` | Chat: URL, help mentions PDF, no extra site prompt |
 
-API routes: `/api/upload`, `/api/chat`, `/api/state`, `/api/remote`, `/api/site`, `/api/design/[id]`, `/api/pack`, `/api/installer`, `/api/bridge`, `/api/generated-plugin`.
+API routes: `/api/upload`, `/api/chat`, `/api/state`, `/api/remote`, `/api/site`, `/api/design/[id]`, `/api/pack`, `/api/installer`, `/api/bridge`, `/api/generated-plugin`, `/api/handoff`, `/api/login`.
+
+---
+
+## Deployment — agent.azbuilds.xyz
+
+Plugin Agent itself runs as a Hostinger **Web App** (Node) on `agent.azbuilds.xyz`, on the
+Business Web Hosting plan owned by `alirshadislamicinstitute@gmail.com` — the same plan that
+hosts `wp.azbuilds.xyz`. Do not confuse the two:
+
+| Host | What it is |
+|---|---|
+| `agent.azbuilds.xyz` | the Plugin Agent app (this repo) |
+| `wp.azbuilds.xyz` | the WordPress site it publishes pages to — unchanged |
+
+Env vars on the deployment:
+
+| Var | Value |
+|---|---|
+| `PLUGIN_AGENT_PASSWORD` | shared password for the gate. **Unset = no gate.** Never leave it unset on public hosting. |
+| `PLUGIN_AGENT_DATA` | absolute path **outside** the deploy directory, so `store.json`, uploads and generated designs survive a redeploy |
+
+Build `npm run build` (Next `output: "standalone"`), start `node .next/standalone/server.js`.
+The build pulls Geist / Fraunces from Google Fonts, so the build host needs outbound internet.
+
+### Password gate
+
+`src/proxy.ts` — Next 16 renamed `middleware.ts` to `proxy.ts` — blocks every route except
+`/login` and `/api/login` unless the `pa_session` cookie equals
+`sha256("plugin-agent-v1:" + PLUGIN_AGENT_PASSWORD)`. API routes get a `401` JSON body, pages
+redirect to `/login`.
+
+Two things that look like style but are not:
+
+- Redirects out of `/api/login` are **relative**. An absolute URL built from `request.url`
+  resolves to the internal origin behind Hostinger's proxy and bounces a signed-in user to
+  `localhost`.
+- `?next=` is filtered to same-origin paths (`safeNextPath`), so `//evil.com` cannot be used
+  as an open redirect.
+
+With `PLUGIN_AGENT_PASSWORD` unset the gate is a no-op — local dev and the Windows EXE are
+unchanged.
 
 ---
 
