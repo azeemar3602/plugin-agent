@@ -1,4 +1,5 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 
 import { analyzeDesignBuffer } from "./analyze-image";
@@ -68,6 +69,29 @@ export async function analyzeDesignFile(filePath: string, buffer: Buffer): Promi
   }
 }
 
+/**
+ * Analyze a raster we already hold in memory. JPEG, PNG and PDF are decoded
+ * from the buffer, so they never need to touch the disk; only the formats that
+ * fall through to the Python analyzer (webp) need a real file, and that one is
+ * written to a temp dir that is removed afterwards.
+ */
+export async function analyzeRasterBuffer(
+  name: string,
+  buffer: Buffer,
+): Promise<DesignAnalysis> {
+  if (/\.(jpe?g|png|pdf)$/i.test(name) || buffer.subarray(0, 5).toString("utf8") === "%PDF-") {
+    return analyzeDesignFile(name, buffer);
+  }
+  const dir = await mkdtemp(path.join(os.tmpdir(), "pa-design-"));
+  try {
+    const filePath = path.join(dir, name);
+    await writeFile(filePath, buffer);
+    return await analyzeDesignFile(filePath, buffer);
+  } finally {
+    await rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
 export async function buildDesignTemplate(options: {
   filename: string;
   buffer: Buffer;
@@ -80,10 +104,11 @@ export async function buildDesignTemplate(options: {
   const dir = path.join(dataDir(), "designs", id);
   await mkdir(dir, { recursive: true });
   const sourceName = options.filename.replace(/[^\w.-]+/g, "-") || "design";
-  const sourcePath = path.join(dir, sourceName);
-  await writeFile(sourcePath, options.buffer);
 
-  const analysis = options.analysis ?? (await analyzeDesignFile(sourcePath, options.buffer));
+  // Only template.json is ever read back (by /api/design/[id]). Keeping a copy
+  // of the source design here cost several MB per drop and nothing read it, so
+  // it is written only when the analyzer still has to be run off a real file.
+  const analysis = options.analysis ?? (await analyzeRasterBuffer(sourceName, options.buffer));
   const widgets = mergeRemoteWidgets(availableWidgets(options.plugins), options.remoteWidgets ?? []);
   const keys = activePluginKeys(options.plugins);
   const title = pageTitle(analysis, widgets, options.filename);

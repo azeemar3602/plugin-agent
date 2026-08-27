@@ -1,9 +1,6 @@
 import { pushPluginNow } from "./agent";
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
 
-import { analyzeDesignFile, buildDesignTemplate, isDesignFile } from "./design";
-import { dataDir } from "./paths";
+import { analyzeRasterBuffer, buildDesignTemplate, isDesignFile } from "./design";
 import { fileBasename, looksLikeElementorTemplate } from "./elementor-detect";
 import { ensureGeneratedWidgets } from "./generate-widgets";
 import { nid, nowIso } from "./ids";
@@ -182,16 +179,7 @@ async function processDesigns(designs: IncomingFile[]) {
   let remoteWidgets = site ? await listElementorWidgets(site) : [];
 
   for (const design of designs) {
-    // Same-millisecond drops collide on a bare timestamp and overwrite each
-    // other's source file, so salt it the way buildDesignTemplate does.
-    const prepDir = path.join(
-      dataDir(),
-      "designs",
-      `prep-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
-    );
-    await mkdir(prepDir, { recursive: true });
     const sourceName = basenameOf(design).replace(/[^\w.-]+/g, "-") || "design";
-    const sourcePath = path.join(prepDir, sourceName);
     const isPdf =
       isPdfFilename(sourceName) || design.buffer.subarray(0, 5).toString("utf8") === "%PDF-";
     await mutateStore((current) => {
@@ -204,17 +192,12 @@ async function processDesigns(designs: IncomingFile[]) {
           : `Got **${sourceName}**. Mapping sections and converting to Elementor — stay on this page; it usually takes about a minute.`,
       });
     });
-    await writeFile(sourcePath, design.buffer);
     let raster = design.buffer;
     if (isPdf) {
       raster = await rasterizePdfToJpeg(design.buffer);
-      await writeFile(path.join(prepDir, sourceName.replace(/\.pdf$/i, ".jpg") || "design.jpg"), raster);
     }
     const rasterName = isPdf ? sourceName.replace(/\.pdf$/i, ".jpg") || "design.jpg" : sourceName;
-    const analysis = await analyzeDesignFile(
-      isPdf ? path.join(prepDir, rasterName) : sourcePath,
-      raster,
-    );
+    const analysis = await analyzeRasterBuffer(rasterName, raster);
     const ensured = await ensureGeneratedWidgets({
       site,
       plugins,

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -725,6 +725,7 @@ async function testGeneratedPlugin() {
   });
   assert.ok(generatedDoc.widgetsUsed.includes("plugin_agent_faq"));
   assert.ok(!generatedDoc.widgetsUsed.includes("html"));
+  await rm(tmp, { recursive: true, force: true }).catch(() => {});
   console.log("generated plugin ok");
 }
 
