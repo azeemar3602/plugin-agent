@@ -225,6 +225,8 @@ If the user says “I dropped a PDF and nothing is there”: they likely used th
 | `src/lib/design-crops.ts` | Landing JPEG crops (hero / dash / logos) |
 | `src/lib/generate-widgets.ts` | Plugin Agent Widgets (skip on landing) |
 | `src/proxy.ts` | Password gate (Next 16 proxy, formerly middleware) |
+| `scripts/prepare-standalone.mjs` | Makes `.next/standalone` self-contained after a build |
+| `scripts/start.mjs` | Production start on `$PORT` via the standalone server |
 | `src/lib/gate.ts` | Gate token, cookie name, safe redirect target |
 | `src/app/login/page.tsx` + `src/app/api/login/route.ts` | Sign-in form and handler |
 | `src/lib/wordpress.ts` | REST: probe, plugins, import, page, media, widgets |
@@ -255,7 +257,17 @@ Env vars on the deployment:
 | `PLUGIN_AGENT_PASSWORD` | shared password for the gate. **Unset = no gate.** Never leave it unset on public hosting. |
 | `PLUGIN_AGENT_DATA` | absolute path **outside** the deploy directory, so `store.json`, uploads and generated designs survive a redeploy |
 
-Build `npm run build` (Next `output: "standalone"`), start `node .next/standalone/server.js`.
+Build and start:
+
+- `npm run build` = `next build` + `scripts/prepare-standalone.mjs`, which copies `.next/static`,
+  `public/`, `bridge/`, `scripts/`, `templates/` and `HANDOFF.md` into `.next/standalone` so the
+  bundle actually runs from a clean checkout. `next build` alone leaves it without static assets.
+- `npm start` = `scripts/start.mjs`, which runs `.next/standalone/server.js` on `PORT` (falls back
+  to 43177) and `HOSTNAME` (falls back to `0.0.0.0`), and pins `PLUGIN_AGENT_ROOT` to the checkout
+  so `/api/bridge`, `/api/handoff` and `data/` do not resolve inside `.next/standalone`. If the
+  standalone bundle is missing it falls back to `next start`.
+
+Do **not** put a fixed `--port` back in `start`: the host assigns the port through `PORT`.
 The build pulls Geist / Fraunces from Google Fonts, so the build host needs outbound internet.
 
 ### Password gate
