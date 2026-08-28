@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { analyzeDesignBuffer } from "./analyze-image";
 import { buildElementorDocument, type DesignAnalysis } from "./elementor-builder";
-import { pageTitle } from "./layout-plan";
+import { pageTitle, titleFromFilename } from "./layout-plan";
 import {
   activePluginKeys,
   availableWidgets,
@@ -13,7 +13,9 @@ import {
 } from "./elementor-widgets";
 import { appRoot, dataDir } from "./paths";
 import { isPdfFilename, rasterizePdfToJpeg } from "./pdf-raster";
+import { hasUsableTextLayer, type PdfStructure } from "./pdf-structure";
 import { runPythonScript } from "./python";
+import { buildFromStructure, type StructurePlaceholder } from "./structure-builder";
 import type { RemoteElementorWidget, RemotePlugin } from "./wordpress";
 
 export type DesignBuild = {
@@ -27,6 +29,8 @@ export type DesignBuild = {
   detectedWidgets: string[];
   generatedRoles: WidgetRole[];
   repairs: Array<{ from: string; to: string; reason: string }>;
+  /** Extracted PDF images awaiting upload, keyed by the URL used in the JSON. */
+  placeholders?: StructurePlaceholder[];
 };
 
 function isDesignName(name: string): boolean {
@@ -99,6 +103,7 @@ export async function buildDesignTemplate(options: {
   remoteWidgets?: RemoteElementorWidget[];
   analysis?: DesignAnalysis;
   generatedRoles?: WidgetRole[];
+  structure?: PdfStructure | null;
 }): Promise<DesignBuild> {
   const id = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
   const dir = path.join(dataDir(), "designs", id);
@@ -112,6 +117,31 @@ export async function buildDesignTemplate(options: {
   const widgets = mergeRemoteWidgets(availableWidgets(options.plugins), options.remoteWidgets ?? []);
   const keys = activePluginKeys(options.plugins);
   const title = pageTitle(analysis, widgets, options.filename);
+
+  // A PDF that carries its own text, images and fills is converted from that
+  // structure. Guessing the layout from pixels is only for flat exports.
+  const structure = options.structure ?? null;
+  if (hasUsableTextLayer(structure)) {
+    const fromStructure = buildFromStructure(structure, titleFromFilename(options.filename));
+    const jsonPath = path.join(dir, "template.json");
+    await writeFile(jsonPath, fromStructure.json, "utf8");
+    return {
+      id,
+      title: titleFromFilename(options.filename),
+      jsonPath,
+      json: fromStructure.json,
+      widgetsUsed: fromStructure.widgetsUsed,
+      sectionRoles: fromStructure.sectionRoles,
+      pluginsConsidered: [...keys],
+      detectedWidgets: widgets
+        .filter((widget) => widget.source === "remote")
+        .map((widget) => widget.label),
+      generatedRoles: options.generatedRoles ?? [],
+      repairs: [],
+      placeholders: fromStructure.placeholders,
+    };
+  }
+
   const built = buildElementorDocument({
     title,
     analysis,

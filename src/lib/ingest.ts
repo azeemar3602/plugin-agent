@@ -25,8 +25,10 @@ import { cropLandingImages } from "./design-crops";
 import { LANDING_STOCK } from "./layout-plan";
 import { MAX_SLUG_LENGTH, resolvePublishTarget } from "./protected-pages";
 import { collectRemoteImageUrls, replaceRemoteImageUrls, type HostedMedia } from "./wp-media";
+import type { StructurePlaceholder } from "./structure-builder";
 import { summarizeRepairs } from "./widget-repair";
 import { isPdfFilename, rasterizePdfToJpeg } from "./pdf-raster";
+import { extractPdfStructure } from "./pdf-structure";
 
 type IncomingFile = {
   relativePath: string;
@@ -193,6 +195,9 @@ async function processDesigns(designs: IncomingFile[]) {
       });
     });
     let raster = design.buffer;
+    // A design PDF carries its text, images and fills as real objects; read them
+    // before falling back to guessing the layout from pixels.
+    const structure = isPdf ? await extractPdfStructure(design.buffer) : null;
     if (isPdf) {
       raster = await rasterizePdfToJpeg(design.buffer);
     }
@@ -215,6 +220,7 @@ async function processDesigns(designs: IncomingFile[]) {
       remoteWidgets,
       analysis,
       generatedRoles: ensured.generated,
+      structure,
     });
 
     let imported = false;
@@ -225,10 +231,12 @@ async function processDesigns(designs: IncomingFile[]) {
     let uploadedCount = 0;
     if (site?.url && site.username && site.password) {
       try {
-        const hosted = await hostDesignImages(site, json, {
-          relativePath: rasterName,
-          buffer: raster,
-        });
+        const hosted = await hostDesignImages(
+          site,
+          json,
+          { relativePath: rasterName, buffer: raster },
+          built.placeholders ?? [],
+        );
         json = hosted.json;
         uploadedCount = hosted.uploaded;
         await importElementorFiles({
@@ -385,9 +393,27 @@ async function hostDesignImages(
   site: Site,
   json: string,
   design: IncomingFile,
+  placeholders: StructurePlaceholder[] = [],
 ): Promise<{ json: string; uploaded: number }> {
   const hosted = new Map<string, HostedMedia>();
   let uploaded = 0;
+
+  // Images lifted straight out of the PDF, referenced by a local placeholder URL.
+  for (const item of placeholders) {
+    try {
+      const media = await uploadMediaFile(site, {
+        filename: item.filename,
+        buffer: item.buffer,
+        mime: "image/png",
+        title: item.filename,
+        alt: "Design image",
+      });
+      hosted.set(item.placeholder, media);
+      uploaded += 1;
+    } catch {
+      /* a failed image must not stop the page from publishing */
+    }
+  }
   const sourceName = basenameOf(design).replace(/[^\w.-]+/g, "-") || "design.jpg";
   try {
     await uploadMediaFile(site, {
