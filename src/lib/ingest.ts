@@ -28,6 +28,10 @@ import { collectRemoteImageUrls, replaceRemoteImageUrls, type HostedMedia } from
 import type { StructurePlaceholder } from "./structure-builder";
 import { summarizeRepairs } from "./widget-repair";
 import { isPdfFilename, rasterizePdfToJpeg } from "./pdf-raster";
+import { writeFile } from "node:fs/promises";
+import path from "node:path";
+
+import { dataDir } from "./paths";
 import { extractPdfStructure } from "./pdf-structure";
 import { summarizeVerification, verifyPublishedPage } from "./verify-page";
 
@@ -240,6 +244,17 @@ async function processDesigns(designs: IncomingFile[]) {
         );
         json = hosted.json;
         uploadedCount = hosted.uploaded;
+        // The newsletter HTML uses the same placeholder URLs, so the media that
+        // was just uploaded for the page serves the email too.
+        if (built.emailHtml && hosted.media.size) {
+          let email = built.emailHtml;
+          for (const [from, media] of hosted.media) email = email.split(from).join(media.url);
+          await writeFile(
+            path.join(dataDir(), "designs", built.id, "newsletter.html"),
+            email,
+            "utf8",
+          );
+        }
         await importElementorFiles({
           site,
           files: [{ filename: `${built.id}.json`, buffer: Buffer.from(json) }],
@@ -332,6 +347,7 @@ async function processDesigns(designs: IncomingFile[]) {
           pageUrl,
           detectedCount: built.detectedWidgets.length,
           generatedRoles: built.generatedRoles,
+          emailHtml: Boolean(built.emailHtml),
         },
       });
     });
@@ -402,7 +418,7 @@ async function hostDesignImages(
   json: string,
   design: IncomingFile,
   placeholders: StructurePlaceholder[] = [],
-): Promise<{ json: string; uploaded: number }> {
+): Promise<{ json: string; uploaded: number; media: Map<string, HostedMedia> }> {
   const hosted = new Map<string, HostedMedia>();
   let uploaded = 0;
 
@@ -478,6 +494,7 @@ async function hostDesignImages(
   return {
     json: JSON.stringify(replaceRemoteImageUrls(parsed, hosted)),
     uploaded: uploaded,
+    media: hosted,
   };
 }
 

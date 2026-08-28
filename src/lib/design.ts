@@ -15,6 +15,7 @@ import { appRoot, dataDir } from "./paths";
 import { isPdfFilename, rasterizePdfToJpeg } from "./pdf-raster";
 import { hasUsableTextLayer, type PdfStructure } from "./pdf-structure";
 import { runPythonScript } from "./python";
+import { buildEmailHtml } from "./email-html";
 import { buildFromStructure, type StructurePlaceholder } from "./structure-builder";
 import type { RemoteElementorWidget, RemotePlugin } from "./wordpress";
 
@@ -23,6 +24,8 @@ export type DesignBuild = {
   title: string;
   jsonPath: string;
   json: string;
+  /** Table-based HTML for an email send, when the design carried a text layer. */
+  emailHtml?: string;
   widgetsUsed: string[];
   sectionRoles: string[];
   pluginsConsidered: string[];
@@ -122,14 +125,18 @@ export async function buildDesignTemplate(options: {
   // structure. Guessing the layout from pixels is only for flat exports.
   const structure = options.structure ?? null;
   if (hasUsableTextLayer(structure)) {
-    const fromStructure = buildFromStructure(structure, titleFromFilename(options.filename));
+    const structureTitle = titleFromFilename(options.filename);
+    const fromStructure = buildFromStructure(structure, structureTitle);
+    const email = buildEmailHtml(structure, structureTitle);
     const jsonPath = path.join(dir, "template.json");
     await writeFile(jsonPath, fromStructure.json, "utf8");
+    await writeFile(path.join(dir, "newsletter.html"), email.html, "utf8");
     return {
       id,
-      title: titleFromFilename(options.filename),
+      title: structureTitle,
       jsonPath,
       json: fromStructure.json,
+      emailHtml: email.html,
       widgetsUsed: fromStructure.widgetsUsed,
       sectionRoles: fromStructure.sectionRoles,
       pluginsConsidered: [...keys],

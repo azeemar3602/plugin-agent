@@ -18,10 +18,19 @@ export type StructureImage = StructureBox & { file: string; buffer: Buffer };
 
 export type StructureShape = StructureBox & { color?: string | null };
 
+export type StructureText = StructureBox & {
+  text: string;
+  size: number;
+  font?: string;
+  color?: string | null;
+};
+
 export type PdfStructure = {
   width: number;
   height: number;
   pages: number;
+  /** Raw runs, before line/paragraph merging — exact positions for fidelity work. */
+  texts: StructureText[];
   blocks: StructureBlock[];
   images: StructureImage[];
   shapes: StructureShape[];
@@ -63,6 +72,7 @@ export async function extractPdfStructure(buffer: Buffer): Promise<PdfStructure 
       width: parsed.width,
       height: parsed.height,
       pages: parsed.pages,
+      texts: parsed.texts ?? [],
       blocks: parsed.blocks ?? [],
       images,
       shapes: parsed.shapes ?? [],

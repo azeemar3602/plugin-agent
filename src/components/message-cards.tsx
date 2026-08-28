@@ -98,6 +98,16 @@ function DesignCard({ card }: { card: Extract<AgentCard, { kind: "design" }> }) 
           <p className="mt-1 font-mono text-[11px] text-muted-foreground">
             Widgets: {card.widgetsUsed.join(", ") || "none"}
           </p>
+          {card.emailHtml ? (
+            <Button
+              size="sm"
+              nativeButton={false}
+              render={<a href={`/api/design/${card.designId}?format=email`} />}
+            >
+              <Download />
+              Email HTML
+            </Button>
+          ) : null}
           {card.generatedRoles?.length ? (
             <p className="mt-1 text-xs text-muted-foreground">
               Generated missing widgets: {card.generatedRoles.join(", ")}
@@ -126,6 +136,16 @@ function DesignCard({ card }: { card: Extract<AgentCard, { kind: "design" }> }) 
             <Download />
             JSON
           </Button>
+          {card.emailHtml ? (
+            <Button
+              size="sm"
+              nativeButton={false}
+              render={<a href={`/api/design/${card.designId}?format=email`} />}
+            >
+              <Download />
+              Email HTML
+            </Button>
+          ) : null}
           {card.generatedRoles?.length ? (
             <Button size="sm" nativeButton={false} render={<a href="/api/generated-plugin" />}>
               <Download />

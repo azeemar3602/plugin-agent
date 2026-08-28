@@ -86,6 +86,8 @@ export type AgentCard =
       pageUrl?: string;
       detectedCount?: number;
       generatedRoles?: string[];
+      /** Table-based newsletter HTML is available for this design. */
+      emailHtml?: boolean;
     };
 
 export type ChatMessage = {
