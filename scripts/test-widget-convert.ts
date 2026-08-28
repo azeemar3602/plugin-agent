@@ -162,6 +162,9 @@ const built = buildElementorDocument({
   },
   widgets,
   extras: { donation: false, search: false, form: false, language: false },
+  // The article plan is only chosen when the filename names the article; without
+  // it this design would be converted from its own sections instead.
+  filename: "vets-reduce-no-shows.jpg",
 });
 
 assert.ok(!built.widgetsUsed.includes("html"), `HTML widget leaked: ${built.widgetsUsed.join(", ")}`);
@@ -407,7 +410,17 @@ assert.equal(
   pageTitle(homepageLikeAnalysis, widgets, "Axion_Industry-Page-Veterinarian-V4_NEW-CONTENT-COPY.pdf"),
   "Never Miss Another Client Call",
 );
-assert.equal(pageTitle(homepageLikeAnalysis, widgets, "upload.jpg"), "Never Miss Another Client Call");
+// A design that does not name itself must NOT inherit the Axion landing title:
+// that is how an unrelated newsletter ended up published as the vet landing.
+assert.equal(pageTitle(homepageLikeAnalysis, widgets, "upload.jpg"), "upload");
+assert.equal(
+  pageTitle(homepageLikeAnalysis, widgets, "Axion_Partner Newsletter_FeedbackV5-B4.pdf"),
+  "Axion Partner Newsletter FeedbackV5-B4",
+);
+assert.equal(
+  classifyPageKind(homepageLikeAnalysis, widgets, "Axion_Partner Newsletter_FeedbackV5-B4.pdf"),
+  "primitive",
+);
 const homepagePlan = planPageLayout({
   analysis: homepageLikeAnalysis,
   widgets,
@@ -440,7 +453,9 @@ assert.match(
   pageTitle(articleLikeAnalysis, widgets, "Axion_Blog Template_V4.jpg"),
   /No-Shows/,
 );
-assert.equal(classifyPageKind(articleLikeAnalysis, widgets), "article");
+// With no filename to name the page, the design is converted from its own
+// sections rather than replaced by the canned Axion article.
+assert.equal(classifyPageKind(articleLikeAnalysis, widgets), "primitive");
 assert.match(pageTitle(articleLikeAnalysis, widgets, "vets-reduce-no-shows.jpg"), /No-Shows/);
 const articlePlan = planPageLayout({
   analysis: articleLikeAnalysis,
@@ -546,6 +561,8 @@ const landingDoc = buildElementorDocument({
   analysis: landingAnalysis,
   widgets,
   extras: { donation: false, search: false, form: false, language: false },
+  // Names the page, so the fixed landing plan is chosen deliberately.
+  filename: "Axion_Industry Page (Veterinarian) V4.pdf",
 });
 assert.equal(JSON.parse(landingDoc.json).title, "Never Miss Another Client Call");
 assert.ok(landingDoc.widgetsUsed.includes("heading"));

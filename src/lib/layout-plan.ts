@@ -274,14 +274,15 @@ export function classifyPageKind(
 ): PageKind {
   if (looksLikeLandingFilename(filename) && !looksLikeArticleFilename(filename)) return "landing";
   if (looksLikeArticleFilename(filename) && !looksLikeLandingFilename(filename)) return "article";
-  if (looksLikeLanding(analysis, filename)) return "landing";
-  if (looksLikeArticle(analysis, filename)) return "article";
+
+  // planLandingPage and planArticlePage emit fixed Axion copy and never read the
+  // analysed design, so committing to them on structure alone replaces an
+  // unrelated design with the wrong page. Structure cannot tell them apart
+  // either: the partner newsletter scores 19 on landingScore while the real vet
+  // landing scores 13. Unless the filename names the page, convert the design
+  // from its own sections.
   if (analysis.sections.length === 0) {
     return hasDetectedLayout(widgets) ? "article" : "primitive";
-  }
-  if (hasDetectedLayout(widgets)) {
-    // Blog widgets on the site must not turn a homepage JPEG into the article plan.
-    return articleScore(analysis, filename) > landingScore(analysis, filename) ? "article" : "landing";
   }
   return "primitive";
 }
@@ -291,11 +292,26 @@ export function landingPageTitle(): string {
 }
 
 export function pageTitle(analysis: DesignAnalysis, widgets: CatalogWidget[], filename?: string): string {
-  if (classifyPageKind(analysis, widgets, filename) === "landing") return landingPageTitle();
-  const fromWidgets = titleFromDetectedWidgets(widgets);
-  if (fromWidgets) return fromWidgets;
-  const base = (filename ?? "design").replace(/[^\w.-]+/g, "-").replace(/\.[^.]+$/, "");
-  return `Design: ${base || "page"}`;
+  const kind = classifyPageKind(analysis, widgets, filename);
+  if (kind === "landing") return landingPageTitle();
+  // titleFromDetectedWidgets reads the Axion blog widgets' own defaults, so it
+  // only describes the design when this really is that article. For anything
+  // else it would title an unrelated design "Vets Reduce No-Shows".
+  if (kind === "article") {
+    const fromWidgets = titleFromDetectedWidgets(widgets);
+    if (fromWidgets) return fromWidgets;
+  }
+  return titleFromFilename(filename);
+}
+
+/** "Axion_Partner Newsletter_FeedbackV5-B4.pdf" → "Axion Partner Newsletter FeedbackV5-B4" */
+export function titleFromFilename(filename?: string): string {
+  const base = (filename ?? "")
+    .replace(/\.[^.]+$/, "")
+    .replace(/[_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return base || "Design";
 }
 
 export function planPageLayout(options: {
