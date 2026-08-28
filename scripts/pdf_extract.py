@@ -72,7 +72,17 @@ def main():
         total_h += h
         pages.append((page, w, h))
 
-    out = {"width": max_w, "height": total_h, "pages": len(pages), "texts": [], "images": [], "shapes": []}
+    out = {
+        "width": max_w,
+        "height": total_h,
+        "pages": len(pages),
+        "texts": [],
+        "images": [],
+        "shapes": [],
+        # Every path, including the small ones: icons, buttons, rules and
+        # illustrations live here, and a band containing them has to be rendered.
+        "vectors": [],
+    }
 
     # Stack pages vertically, matching how pdf_to_jpeg.py rasterizes them.
     y_offset = 0.0
@@ -156,8 +166,9 @@ def main():
                 if os.path.exists(dest):
                     out["images"].append({**box, "file": name})
             elif obj.type == PATH:
+                out["vectors"].append(box)
                 area = (right - left) * (bottom - top)
-                # Only large fills matter; hairlines and icon strokes are noise.
+                # Only large fills are usable as backgrounds; the rest is artwork.
                 if area < (max_w * total_h) * 0.002:
                     continue
                 out["shapes"].append({**box, "color": fill_color(obj)})
@@ -167,6 +178,7 @@ def main():
     out["texts"].sort(key=lambda t: (t["y0"], t["x0"]))
     out["images"].sort(key=lambda t: (t["y0"], t["x0"]))
     out["shapes"].sort(key=lambda t: (t["y0"], t["x0"]))
+    out["vectors"].sort(key=lambda t: (t["y0"], t["x0"]))
     out["blocks"] = group_blocks(out["texts"], total_h)
     json.dump(out, sys.stdout)
 
