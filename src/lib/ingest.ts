@@ -28,10 +28,10 @@ import { collectRemoteImageUrls, replaceRemoteImageUrls, type HostedMedia } from
 import type { StructurePlaceholder } from "./structure-builder";
 import { summarizeRepairs } from "./widget-repair";
 import { isPdfFilename, rasterizePdfToJpeg } from "./pdf-raster";
-import { writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { dataDir } from "./paths";
+import { dataDir, exportDir } from "./paths";
 import { extractPdfStructure } from "./pdf-structure";
 import { summarizeVerification, verifyPublishedPage } from "./verify-page";
 
@@ -229,6 +229,7 @@ async function processDesigns(designs: IncomingFile[]) {
     });
 
     let imported = false;
+    let emailExportPath = "";
     let importError: string | undefined;
     let pageUrl: string | undefined;
     let skippedProtected = false;
@@ -254,6 +255,7 @@ async function processDesigns(designs: IncomingFile[]) {
             email,
             "utf8",
           );
+          emailExportPath = await exportNewsletter(built.title, email);
         }
         await importElementorFiles({
           site,
@@ -334,7 +336,7 @@ async function processDesigns(designs: IncomingFile[]) {
         id: nid(),
         role: "agent",
         text: imported
-          ? `Detected ${built.detectedWidgets.length} Elementor widgets on this site, mapped sections then columns (${built.sectionRoles.join(" → ")}), and built **${built.title}** in containers: ${built.widgetsUsed.join(", ")}.${generatedNote}${repairNote}${uploadedCount ? ` Uploaded ${uploadedCount} images to the WordPress media library.` : ""}${skippedProtected ? " Did not overwrite the protected live page; published a new URL instead." : ""}${pageUrl ? ` Live page: ${pageUrl}` : " Saved under Templates → Saved Templates."}${verifyNote}`
+          ? `Detected ${built.detectedWidgets.length} Elementor widgets on this site, mapped sections then columns (${built.sectionRoles.join(" → ")}), and built **${built.title}** in containers: ${built.widgetsUsed.join(", ")}.${generatedNote}${repairNote}${uploadedCount ? ` Uploaded ${uploadedCount} images to the WordPress media library.` : ""}${skippedProtected ? " Did not overwrite the protected live page; published a new URL instead." : ""}${pageUrl ? ` Live page: ${pageUrl}` : " Saved under Templates → Saved Templates."}${emailExportPath ? ` Newsletter HTML saved to ${emailExportPath}.` : ""}${verifyNote}`
           : `Mapped sections then columns (${built.sectionRoles.join(" → ")}), then built **${built.title}** in Elementor containers. Widgets used: ${built.widgetsUsed.join(", ") || "none"}.${generatedNote}${repairNote}${importError ? ` Import skipped: ${importError}` : " Download the JSON and import it in Elementor."}`,
         createdAt: nowIso(),
         card: {
@@ -506,5 +508,20 @@ function filenameFromUrl(url: string, mime: string): string {
     return `${base.replace(/[^\w.-]+/g, "-")}.${ext}`;
   } catch {
     return `image-${Date.now()}.${ext}`;
+  }
+}
+
+/** Copy the finished newsletter HTML somewhere the user can actually find it. */
+async function exportNewsletter(title: string, html: string): Promise<string> {
+  const dir = exportDir();
+  if (!dir) return "";
+  const name = `${(title || "newsletter").replace(/[^\w.-]+/g, "_")}.html`;
+  const dest = path.join(dir, name);
+  try {
+    await mkdir(dir, { recursive: true });
+    await writeFile(dest, html, "utf8");
+    return dest;
+  } catch {
+    return "";
   }
 }
