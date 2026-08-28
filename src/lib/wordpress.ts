@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { restRouteFallback, restUrl } from "./urls";
 import type { Site, SiteStatus } from "./types";
 
@@ -391,14 +392,56 @@ export async function findPageIdBySlug(site: Site, slug: string): Promise<number
   return typeof id === "number" ? id : undefined;
 }
 
+/**
+ * Find media already on the site with this exact content.
+ *
+ * The hash is stored in the attachment's caption at upload time, so a repeat
+ * conversion reuses what is there. Without this every run uploaded the same
+ * files again: wp.azbuilds.xyz ended up with 34 copies of one dashboard image
+ * and 187 design images from a single afternoon of testing.
+ */
+async function findMediaByHash(site: Site, hash: string): Promise<{ id: number; url: string } | null> {
+  try {
+    const result = await tryUrls(
+      site.url,
+      `wp/v2/media?search=${encodeURIComponent(hash)}&per_page=5&_fields=id,source_url,caption`,
+      {
+        method: "GET",
+        headers: { Authorization: authHeader(site), Accept: "application/json" },
+        signal: AbortSignal.timeout(30000),
+      },
+    );
+    if (!result.ok || !Array.isArray(result.json)) return null;
+    for (const item of result.json as Array<{
+      id?: number;
+      source_url?: string;
+      caption?: { rendered?: string };
+    }>) {
+      if (!item.id || !item.source_url) continue;
+      if ((item.caption?.rendered ?? "").includes(hash)) {
+        return { id: item.id, url: item.source_url };
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export async function uploadMediaFile(
   site: Site,
   file: { filename: string; buffer: Buffer; mime: string; title?: string; alt?: string },
 ): Promise<{ id: number; url: string }> {
+  const hash = `pa-sha-${createHash("sha256").update(file.buffer).digest("hex").slice(0, 32)}`;
+  const existing = await findMediaByHash(site, hash);
+  if (existing) return existing;
+
   const form = new FormData();
   form.append("file", new Blob([new Uint8Array(file.buffer)], { type: file.mime }), file.filename);
   if (file.title) form.append("title", file.title);
   if (file.alt) form.append("alt_text", file.alt);
+  // Caption carries the content hash so the next run can find this file.
+  form.append("caption", hash);
 
   const result = await tryUrls(site.url, "wp/v2/media", {
     method: "POST",
