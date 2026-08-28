@@ -241,7 +241,7 @@ async function processDesigns(designs: IncomingFile[]) {
           site,
           json,
           { relativePath: rasterName, buffer: raster },
-          built.placeholders ?? [],
+          [...(built.placeholders ?? []), ...(built.emailImages ?? [])],
         );
         json = hosted.json;
         uploadedCount = hosted.uploaded;

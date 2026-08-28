@@ -34,6 +34,8 @@ export type DesignBuild = {
   repairs: Array<{ from: string; to: string; reason: string }>;
   /** Extracted PDF images awaiting upload, keyed by the URL used in the JSON. */
   placeholders?: StructurePlaceholder[];
+  /** Rendered newsletter slices awaiting upload, keyed by the URL in the HTML. */
+  emailImages?: StructurePlaceholder[];
 };
 
 function isDesignName(name: string): boolean {
@@ -127,7 +129,7 @@ export async function buildDesignTemplate(options: {
   if (hasUsableTextLayer(structure)) {
     const structureTitle = titleFromFilename(options.filename);
     const fromStructure = buildFromStructure(structure, structureTitle);
-    const email = buildEmailHtml(structure, structureTitle);
+    const email = await buildEmailHtml(structure, structureTitle);
     const jsonPath = path.join(dir, "template.json");
     await writeFile(jsonPath, fromStructure.json, "utf8");
     await writeFile(path.join(dir, "newsletter.html"), email.html, "utf8");
@@ -146,6 +148,7 @@ export async function buildDesignTemplate(options: {
       generatedRoles: options.generatedRoles ?? [],
       repairs: [],
       placeholders: fromStructure.placeholders,
+      emailImages: email.images,
     };
   }
 
