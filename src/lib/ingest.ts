@@ -29,6 +29,7 @@ import type { StructurePlaceholder } from "./structure-builder";
 import { summarizeRepairs } from "./widget-repair";
 import { isPdfFilename, rasterizePdfToJpeg } from "./pdf-raster";
 import { extractPdfStructure } from "./pdf-structure";
+import { summarizeVerification, verifyPublishedPage } from "./verify-page";
 
 type IncomingFile = {
   relativePath: string;
@@ -284,6 +285,13 @@ async function processDesigns(designs: IncomingFile[]) {
       }
     }
 
+    // Publishing is not the end of the job: read the live page back and check
+    // every section of the design actually made it across.
+    let verifyNote = "";
+    if (imported && pageUrl && structure) {
+      verifyNote = summarizeVerification(await verifyPublishedPage(structure, pageUrl));
+    }
+
     const generatedNote = built.generatedRoles.length
       ? ensured.installed
         ? ` This site had no matching widgets for ${built.generatedRoles.join(", ")}, so I generated **Plugin Agent Widgets** and installed it.`
@@ -311,7 +319,7 @@ async function processDesigns(designs: IncomingFile[]) {
         id: nid(),
         role: "agent",
         text: imported
-          ? `Detected ${built.detectedWidgets.length} Elementor widgets on this site, mapped sections then columns (${built.sectionRoles.join(" → ")}), and built **${built.title}** in containers: ${built.widgetsUsed.join(", ")}.${generatedNote}${repairNote}${uploadedCount ? ` Uploaded ${uploadedCount} images to the WordPress media library.` : ""}${skippedProtected ? " Did not overwrite the protected live page; published a new URL instead." : ""}${pageUrl ? ` Live page: ${pageUrl}` : " Saved under Templates → Saved Templates."}`
+          ? `Detected ${built.detectedWidgets.length} Elementor widgets on this site, mapped sections then columns (${built.sectionRoles.join(" → ")}), and built **${built.title}** in containers: ${built.widgetsUsed.join(", ")}.${generatedNote}${repairNote}${uploadedCount ? ` Uploaded ${uploadedCount} images to the WordPress media library.` : ""}${skippedProtected ? " Did not overwrite the protected live page; published a new URL instead." : ""}${pageUrl ? ` Live page: ${pageUrl}` : " Saved under Templates → Saved Templates."}${verifyNote}`
           : `Mapped sections then columns (${built.sectionRoles.join(" → ")}), then built **${built.title}** in Elementor containers. Widgets used: ${built.widgetsUsed.join(", ") || "none"}.${generatedNote}${repairNote}${importError ? ` Import skipped: ${importError}` : " Download the JSON and import it in Elementor."}`,
         createdAt: nowIso(),
         card: {
