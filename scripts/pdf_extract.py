@@ -14,10 +14,26 @@ import json
 import os
 import sys
 
+import ctypes
+
 import pypdfium2 as pdfium
+import pypdfium2.raw as raw
 from PIL import Image
 
 TEXT, PATH, IMAGE = 1, 2, 3
+
+
+def fill_color(obj):
+    """The object's own fill colour, straight from the PDF."""
+    r, g, b, a = (ctypes.c_uint(), ctypes.c_uint(), ctypes.c_uint(), ctypes.c_uint())
+    try:
+        if not raw.FPDFPageObj_GetFillColor(obj.raw, r, g, b, a):
+            return None
+    except Exception:
+        return None
+    if a.value == 0:
+        return None
+    return "#%02x%02x%02x" % (r.value, g.value, b.value)
 
 
 def sample_color(raster, page_w, page_h, box):
@@ -113,7 +129,7 @@ def main():
                         "text": text,
                         "size": round(size, 2),
                         "font": font,
-                        "color": sample_color(raster, pw, ph, (bx0, ph - by1, bx1, ph - by0)),
+                        "color": fill_color(obj),
                     }
                 )
             elif obj.type == IMAGE:
@@ -144,9 +160,7 @@ def main():
                 # Only large fills matter; hairlines and icon strokes are noise.
                 if area < (max_w * total_h) * 0.002:
                     continue
-                out["shapes"].append(
-                    {**box, "color": sample_color(raster, pw, ph, (bx0, ph - by1, bx1, ph - by0))}
-                )
+                out["shapes"].append({**box, "color": fill_color(obj)})
 
         y_offset += ph
 
@@ -233,7 +247,14 @@ def group_blocks(texts, page_h):
             b["role"] = "subheading"
         else:
             b["role"] = "paragraph"
-    return [b for b in blocks if b["text"]]
+    return [b for b in blocks if _is_content(b["text"])]
+
+
+def _is_content(text):
+    stripped = text.strip()
+    if len(stripped) < 2:
+        return False
+    return any(ch.isalnum() for ch in stripped)
 
 
 def join_runs(parts):
@@ -248,9 +269,17 @@ def join_runs(parts):
             out += p
         elif out[-1:].isalnum() and p[:1].isalnum() and (out[-1:].islower() or p[:1].islower()):
             out += p
+        elif len(out) >= 1 and out[-1:].isupper() and p[:1].isupper() and _lone_capital(out):
+            # Small-caps set a word's first letter as its own run: "F" + "EATURED".
+            out += p
         else:
             out += " " + p
     return " ".join(out.split())
+
+
+def _lone_capital(value):
+    tail = value.split(" ")[-1]
+    return len(tail) == 1 and tail.isupper()
 
 
 def median(values):
